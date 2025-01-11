@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
-import org.company.app.Platform
-import org.company.app.getPlatform
+import org.company.app.platform.Platform
+import org.company.app.platform.getPlatform
 import kotlin.math.abs
 
 @Composable
@@ -48,7 +48,6 @@ fun InteractiveGraph(
 ) {
     val density = LocalDensity.current
     val hapticFeedback = LocalHapticFeedback.current
-
 
     val pointRadius = pointSize.toPx(density)
     require(timeData.size == yData.size) { "timeData and yData must have the same size" }
@@ -76,7 +75,7 @@ fun InteractiveGraph(
     }
 
     Box(
-        modifier = modifier.pointerInput(Unit) {
+        modifier = modifier.pointerInput(yData, timeData) {
             awaitPointerEventScope {
                 while (true) {
                     // Wait for a pointer event

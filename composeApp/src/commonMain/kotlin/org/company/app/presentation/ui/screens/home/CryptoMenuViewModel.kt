@@ -1,59 +1,74 @@
 package org.company.app.presentation.ui.screens.home
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import org.company.app.domain.model.crypto.Data
-import org.company.app.domain.model.crypto.MarketPrice
+import org.company.app.domain.model.crypto.ChartPrice
 import org.company.app.domain.model.fiat.FiatCurrency
+import org.company.app.domain.model.fiat.FiatCurrency.Companion.getLocalFiatCurrency
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.domain.usecase.ResultState
+import org.company.app.domain.usecase.asResult
+import org.company.app.domain.usecase.doOnFailure
+import org.company.app.domain.usecase.doOnSuccess
+import org.company.app.presentation.ui.base.BaseViewModel
+import org.company.app.presentation.ui.base.UiEffect
 import org.company.app.presentation.ui.components.Period
 
 class CryptoMenuViewModel(
     private val cryptoMenuItem: CryptoMenuItem = CryptoMenuItem.BITCOIN,
     private val cryptoDataRepository: CryptoMarketDataRepository
-) : ViewModel() {
-
-    private val _cryptoData = MutableStateFlow<ResultState<List<MarketPrice>>>(ResultState.LOADING)
-    var cryptoData: StateFlow<ResultState<List<MarketPrice>>> = _cryptoData.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(),
-        ResultState.LOADING
-    )
+) : BaseViewModel<CryptoMenuSate, UiEffect>() {
 
     init {
-        fetchCryptoData(Period.ONE_YEAR)
+        fetchCryptoData()
     }
 
-    fun fetchCryptoData(period: Period) {
+    private fun fetchCryptoData() {
         viewModelScope.launch {
-            _cryptoData.value = ResultState.LOADING
-            try {
-                val response =
-                    cryptoDataRepository.getMarketChart(
-                        id = cryptoMenuItem.id,
-                        fiatCurrency = FiatCurrency.EUR,
-                        days = period.days
-                    )
-               val data =  if (period == Period.ONE_HOUR) {
-                    val lastTime = response.last().time
-                    val oneHourInMillis = 60 * 60 * 1000L
-                    response.filter { it.time > lastTime - oneHourInMillis }
-                } else response
-                println("start = ${response.first().time}")
-                println("end = ${response.last().time}")
-                _cryptoData.value = ResultState.SUCCESS(data)
-            } catch (e: Exception) {
-                _cryptoData.value = ResultState.ERROR(e.message.toString())
-            }
+            collectMarketData(currentState.fiatCurrency)
+                .asResult()
+                .doOnFailure {
+                    println("ERROR : $it")
+                }
+                .doOnSuccess { data ->
+                    println("size date : ${data.size}")
+                    setState {
+                        copy(
+                            marketPrice = data.values.flatten().maxBy { it.time }.value,
+                            marketChartPrices = data
+                        )
+                    }
+                }.collect()
         }
     }
+
+    private suspend fun collectMarketData(localFiatCurrency: FiatCurrency): Flow<Map<Period, List<ChartPrice>>> {
+        val enums = Period.entries.map { period ->
+            cryptoDataRepository.getMarketChart(
+                id = cryptoMenuItem.id,
+                fiatCurrency = localFiatCurrency,
+                days = period.days
+            ).map { markChartPrices ->
+                period to if (period == Period.ONE_HOUR) {
+                    val lastTime = markChartPrices.last().time
+                    val oneHourInMillis = 60 * 60 * 1000L
+                    markChartPrices.filter { it.time > lastTime - oneHourInMillis }
+                } else markChartPrices
+            }
+        }
+        return combine(enums) { arrayOfPairs ->
+            arrayOfPairs.associate { it }
+        }
+    }
+
+    override fun createInitialState(): CryptoMenuSate = CryptoMenuSate(
+        marketPrice = null,
+        fiatCurrency = getLocalFiatCurrency(),
+        walletChartPrice = emptyMap(),
+        marketChartPrices = emptyMap()
+    )
 }
 

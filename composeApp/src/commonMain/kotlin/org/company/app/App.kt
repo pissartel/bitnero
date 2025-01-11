@@ -62,13 +62,10 @@ import coil3.util.DebugLogger
 import org.company.app.di.appModule
 import org.company.app.presentation.ui.navigation.rails.items.NavigationItem
 import org.company.app.presentation.ui.navigation.rails.navbar.NavigationSideBar
-import org.company.app.presentation.ui.navigation.tab.analytics.Analytics
 import org.company.app.presentation.ui.navigation.tab.home.Home
-import org.company.app.presentation.ui.navigation.tab.profile.Profile
 import org.company.app.theme.AppTheme
 import org.company.app.theme.LocalThemeIsDark
 import org.koin.compose.KoinApplication
-import org.koin.core.KoinApplication
 
 @OptIn(ExperimentalCoilApi::class)
 @Composable
@@ -137,8 +134,6 @@ fun AppContent() {
                     tonalElevation = 8.dp
                 ) {
                     TabItem(Home)
-                    TabItem(Analytics)
-                    TabItem(Profile)
                 }
             }
         }) {
@@ -168,26 +163,6 @@ fun AppContent() {
             when (selectedItemIndex) {
                 0 -> {
 
-                }
-
-                1 -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        TabNavigator(Analytics)
-                    }
-                }
-
-                2 -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        TabNavigator(Profile)
-                    }
                 }
             }
         }

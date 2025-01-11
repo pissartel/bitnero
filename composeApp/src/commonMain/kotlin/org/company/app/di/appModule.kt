@@ -15,9 +15,7 @@ import org.company.app.data.remote.CryptoMarketClient
 import org.company.app.domain.repository.CryptoMarketDataRepository
 import org.company.app.presentation.ui.screens.home.CryptoMenuItem
 import org.company.app.presentation.ui.screens.home.CryptoMenuViewModel
-import org.company.app.presentation.viewmodel.MainViewModel
 import org.company.app.utils.Constant
-import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 val appModule = module {
@@ -57,6 +55,5 @@ val appModule = module {
     single {
         CryptoMarketDataRepository(get())
     }
-    singleOf(::MainViewModel)
     single { CryptoMenuViewModel(CryptoMenuItem.BITCOIN, get()) }
 }

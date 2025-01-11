@@ -1,4 +1,4 @@
-package org.company.app
+package org.company.app.platform
 
 expect fun getPlatform(): Platform
 

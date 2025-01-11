@@ -22,104 +22,147 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.company.app.domain.model.crypto.MarketPrice
+import org.company.app.domain.model.crypto.ChartPrice
+import org.company.app.domain.model.fiat.FiatCurrency
+import org.company.app.domain.model.fiat.FiatCurrency.Companion.toFiatString
 import org.company.app.presentation.ui.components.Period.*
 import org.company.app.theme.cryptoColors
-import kotlin.time.ExperimentalTime
-
 
 @Composable
 fun MarketChartView(
-    selectedPeriod: Period,
-    marketPrices: List<MarketPrice>,
+    marketPrice: Double?,
+    chartPrices: Map<Period, List<ChartPrice>>,
+    fiatCurrency: FiatCurrency,
     modifier: Modifier = Modifier
 ) {
-    val currentMarketCapPrice = remember {
-        marketPrices.maxBy { it.time }
+    var selectedChartPrice by remember { mutableStateOf<ChartPrice?>(null) }
+
+    var selectedPeriod by remember {
+        mutableStateOf(ONE_YEAR)
     }
 
-    var selectedMarketPrice by remember { mutableStateOf<MarketPrice?>(null) }
-
-    val periodPercentChange by remember(marketPrices, selectedMarketPrice) {
+    val selectedChartPrices by remember(selectedPeriod, chartPrices) {
         derivedStateOf {
-            val selectedPriceValueOnPeriod =
-                marketPrices.minBy { it.time }.value
-            kotlin.math.floor(
-                (100 * (
-                        (selectedMarketPrice
-                            ?: currentMarketCapPrice).value - selectedPriceValueOnPeriod) / selectedPriceValueOnPeriod)
-                        * 100.0
-            ) / 100.0
+            chartPrices[selectedPeriod]
+        }
+    }
+
+    val periodPercentChange by remember(chartPrices, selectedChartPrice, selectedChartPrices) {
+        derivedStateOf {
+            val minChartValue = selectedChartPrices?.minBy { it.time }?.value
+            if (selectedChartPrices != null && minChartValue != null) {
+                minChartValue.let {
+                    (selectedChartPrice?.value
+                        ?: marketPrice)?.minus(it)
+                }?.let {
+                    kotlin.math.floor(
+                        (100 * it / minChartValue)
+                                * 100.0
+                    ) / 100.0
+                }
+            } else null
         }
     }
     val isPositive by remember(periodPercentChange) {
         derivedStateOf {
-            periodPercentChange > 0
+            periodPercentChange?.let { it > 0 }
         }
     }
     val percentColor by remember(periodPercentChange) {
         derivedStateOf {
-            if (isPositive) cryptoColors.Charts.positive else cryptoColors.Charts.negative
+            when (isPositive) {
+                true -> cryptoColors.Charts.positive
+                false -> cryptoColors.Charts.negative
+                null -> Color.Unspecified
+            }
         }
     }
 
-    Column(modifier) {
-        ChartView(
-            modifier = modifier.fillMaxHeight(fraction = 0.90f),
-            marketPrices = marketPrices,
-            selectedPeriod = selectedPeriod,
-            selectedMarketPrice = selectedMarketPrice,
-            accentColor = MaterialTheme.cryptoColors.Currency.bitcoin,
-            headerRow = {
-                Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${selectedMarketPrice?.value ?: currentMarketCapPrice.value} $")
-                    val symb = when (periodPercentChange) {
-                        in Double.NEGATIVE_INFINITY..(-10).toDouble() -> '↓'
-                        in (-10).toDouble()..(0).toDouble() -> "↘"
-                        in (0).toDouble()..10.toDouble() -> "↗"
-                        in 10.toDouble()..Double.POSITIVE_INFINITY -> '↑'
-                        else -> ""
-                    }
-                    Spacer(modifier.width(10.dp))
-                    Text(
-                        "$symb $periodPercentChange %", style = TextStyle(color = percentColor)
-                    )
+    val arrowSymbol by remember(periodPercentChange) {
+        derivedStateOf {
+            periodPercentChange?.let {
+                when (it) {
+                    in Double.NEGATIVE_INFINITY..(-10).toDouble() -> '↓'
+                    in (-10).toDouble()..(0).toDouble() -> "↘"
+                    in (0).toDouble()..10.toDouble() -> "↗"
+                    in 10.toDouble()..Double.POSITIVE_INFINITY -> '↑'
+                    else -> ""
                 }
-            },
-            onSelectedMarketPrice = { selectedMarketPrice = it }
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-
+            } ?: ""
+        }
     }
+
+    selectedChartPrices?.let {
+        Column(modifier) {
+            ChartView(
+                modifier = modifier.fillMaxHeight(fraction = 0.90f),
+                chartPrices = it,
+                selectedPeriod = selectedPeriod,
+                selectedChartPrice = selectedChartPrice,
+                accentColor = percentColor,
+                headerRow = {
+                    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        if (periodPercentChange != null) {
+                            Text(
+                                "${
+                                    (selectedChartPrice?.value ?: marketPrice)?.toFiatString(
+                                        fiatCurrency
+                                    )
+                                }",
+                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 1
+                            )
+                            Spacer(modifier.width(10.dp))
+                            Text(
+                                "$arrowSymbol $periodPercentChange %",
+                                style = TextStyle(color = percentColor)
+                            )
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        PeriodSelection(selectedPeriod) {
+                            selectedChartPrice = null
+                            selectedPeriod = it
+                        }
+                    }
+                },
+                onSelectedMarketPrice = { selectedChartPrice = it }
+            )
+        }
+    } ?: LoadingBox()
 }
 
 @Composable
 private fun ChartView(
     headerRow: @Composable () -> Unit,
-    selectedMarketPrice: MarketPrice?,
-    marketPrices: List<MarketPrice>,
+    selectedChartPrice: ChartPrice?,
+    chartPrices: List<ChartPrice>,
     accentColor: Color,
     selectedPeriod: Period,
-    onSelectedMarketPrice: (MarketPrice?) -> Unit,
+    onSelectedMarketPrice: (ChartPrice?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val selectedPointIndex by remember(chartPrices, selectedChartPrice) {
+        derivedStateOf {
+            chartPrices.indexOf(selectedChartPrice).takeIf { index -> index >= 0 }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize())
     {
         headerRow()
+        Spacer(modifier = Modifier.weight(1f))
         InteractiveGraph(
             graphColor = accentColor,
-            selectedPointIndex = selectedMarketPrice?.let { marketPrices.indexOf(it) },
+            selectedPointIndex = selectedPointIndex,
             modifier = modifier.fillMaxSize(),
-            timeData = marketPrices.map { it.time },
-            yData = marketPrices.map { it.value },
+            timeData = chartPrices.map { it.time },
+            yData = chartPrices.map { it.value },
             convertXCallback = { time: Long ->
                 time.convertMillisToReadableDate(
                     when (selectedPeriod) {
@@ -132,11 +175,12 @@ private fun ChartView(
                 )
             },
             onPointSelected = { selectedIndex ->
-                onSelectedMarketPrice(selectedIndex?.let { marketPrices.getOrNull(it) })
+                val chartPrice = selectedIndex?.let { chartPrices.getOrNull(it) }
+                onSelectedMarketPrice(chartPrice)
             }
         )
-        Spacer(modifier = Modifier.height(10.dp))
-        PeriodAxis(selectedPeriod, marketPrices.first().time, marketPrices.last().time)
+        Spacer(modifier = Modifier.weight(1f))
+        PeriodAxis(selectedPeriod, chartPrices.first().time, chartPrices.last().time)
     }
 }
 

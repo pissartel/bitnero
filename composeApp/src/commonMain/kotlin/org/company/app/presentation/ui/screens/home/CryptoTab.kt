@@ -6,11 +6,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,13 +23,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import org.company.app.domain.model.crypto.MarketPrice
-import org.company.app.domain.usecase.ResultState
+import org.company.app.domain.model.crypto.ChartPrice
 import org.company.app.presentation.ui.components.LoadingBox
 import org.company.app.presentation.ui.components.MarketChartView
-import org.company.app.presentation.ui.components.Period
 import org.company.app.presentation.ui.components.Period.ONE_YEAR
 import org.company.app.presentation.ui.components.PeriodSelection
 import org.koin.compose.koinInject
@@ -38,53 +36,31 @@ fun CryptoMenu(
     cryptoMenuItem: CryptoMenuItem,
     viewModel: CryptoMenuViewModel = koinInject(),
 ) {
-    val data by viewModel.cryptoData.collectAsState()
-    var selectedPeriod by remember {
-        mutableStateOf(ONE_YEAR)
-    }
+    val state by viewModel.state.collectAsState()
 
-    var marketPrices by remember {
-        mutableStateOf(emptyList<MarketPrice>())
-    }
-
-    Column {
+    Column(
+        modifier = Modifier.padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         Text("Cours")
         Spacer(modifier = Modifier.height(16.dp))
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(500.dp)
+                .height(300.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface)
                 .border(
-                    BorderStroke(1.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)),
+                    BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
                     RoundedCornerShape(16.dp)
                 )
                 .padding(16.dp)
         ) {
-            when (data) {
-                is ResultState.ERROR -> Text("ERROR")
-                ResultState.LOADING -> {
-                    LoadingBox()
-                }
-
-                is ResultState.SUCCESS -> {
-                    marketPrices =
-                        (data as ResultState.SUCCESS<List<MarketPrice>>).response
-
-                    MarketChartView(
-                        selectedPeriod,
-                        marketPrices,
-                    )
-
-                }
-            }
-
-            PeriodSelection(selectedPeriod, modifier = Modifier.align(Alignment.TopEnd)) {
-                selectedPeriod = it
-                viewModel.fetchCryptoData(selectedPeriod)
-            }
-
+            MarketChartView(
+                marketPrice = state.marketPrice,
+                chartPrices = state.marketChartPrices,
+                fiatCurrency = state.fiatCurrency
+            )
         }
     }
 }
