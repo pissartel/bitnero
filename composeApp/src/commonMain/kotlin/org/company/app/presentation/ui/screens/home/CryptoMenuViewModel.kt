@@ -17,6 +17,7 @@ import org.company.app.presentation.ui.base.BaseViewModel
 import org.company.app.presentation.ui.base.UiEffect
 import org.company.app.presentation.ui.components.Period
 
+
 class CryptoMenuViewModel(
     private val cryptoMenuItem: CryptoMenuItem = CryptoMenuItem.BITCOIN,
     private val cryptoDataRepository: CryptoMarketDataRepository
@@ -24,6 +25,7 @@ class CryptoMenuViewModel(
 
     init {
         fetchCryptoData()
+
     }
 
     private fun fetchCryptoData() {

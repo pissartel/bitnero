@@ -58,6 +58,9 @@ kotlin {
             }
         }
         commonMain.dependencies {
+            // bitcoin for Android and JVM
+            implementation(libs.bitcoinj)
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -99,6 +102,9 @@ kotlin {
         }
 
         androidMain.dependencies {
+            // lightning
+            implementation(libs.bitcoin.lightning.kmp)
+
             implementation(compose.uiTooling)
             implementation(libs.androidx.activityCompose)
             implementation(libs.kotlinx.coroutines.android)
@@ -115,6 +121,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqlDelight.driver.sqlite)
+
         }
 
         jsMain.dependencies {
@@ -128,6 +135,10 @@ kotlin {
             implementation(libs.sqlDelight.driver.native)
         }
 
+        nativeMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+            implementation(libs.sqlDelight.driver.native)
+        }
     }
 }
 
