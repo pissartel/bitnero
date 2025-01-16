@@ -1,33 +1,63 @@
 package org.company.app.platform
 
-import android.os.Environment
-import io.kamel.core.utils.File
-import org.bitcoinj.core.Coin.SATOSHI
-import org.bitcoinj.core.NetworkParameters
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import org.bitcoinj.core.Coin
+import org.bitcoinj.core.ECKey
+import org.bitcoinj.core.Transaction
 import org.bitcoinj.kits.WalletAppKit
+import org.bitcoinj.params.RegTestParams
 import org.bitcoinj.wallet.DeterministicSeed
 import org.bitcoinj.wallet.Wallet
+import org.company.app.AndroidApp.Companion.APP_CONTEXT_INSTANCE
+import java.io.File
 
 
 actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : BitcoinWallet() {
 
-    private val walletFolder = File(Environment.getExternalStorageDirectory(), "/" + "wallet")
-    private val walletFileName = "bitcoin"
-    private val networkParameters = NetworkParameters.fromID(network.id)
-    private var kit = WalletAppKit(networkParameters, walletFolder, walletFileName)
+    private val walletFolder = File(
+        APP_CONTEXT_INSTANCE.externalCacheDir, "wallet"
+    )
+    private val walletFileName = "bitcoin-wallet"
+    private val networkParameters = RegTestParams.get()//NetworkParameters.fromID(network.id)
 
+    private val _balance = MutableStateFlow<Long?>(null)
+    override val balance: StateFlow<Long?> = _balance.asStateFlow()
 
-    override val balance: Long
-        get() = kit.wallet().getBalanceFuture(SATOSHI, Wallet.BalanceType.AVAILABLE).get().value
+    private val _publicAddress = MutableStateFlow<String?>(null)
+    override val publicAddress: StateFlow<String?> = _publicAddress.asStateFlow()
 
-    override suspend fun create(): WalletData {
-        createWalletFolderIfNecessay()
-        val keyChainSeed = kit.wallet()?.keyChainSeed
-            ?: throw WalletException.CreationException("Wallet kit failed")
-        return keyChainSeed.mnemonicCode?.toList()
-            ?.let { WalletData(it, keyChainSeed.creationTimeSeconds) }
-            ?: throw WalletException.CreationException("Wallet kit failed")
+    private val _state = MutableStateFlow<WalletState>(WalletState.UNKNOWN)
+    override val state: StateFlow<WalletState> = _state.asStateFlow()
+
+    private var kit: WalletAppKit = crateWalletKit()
+
+    init {
+        // TODO check if there is already a wallet
+        _state.tryEmit(WalletState.NOT_CREATED)
     }
+
+    override suspend fun create(): Flow<WalletData> =
+        flow {
+            _state.tryEmit(WalletState.CREATING)
+
+            kit.setBlockingStartup(false)
+            kit.startAsync()
+
+            // Wait for Wallet set up to emit wallet data
+            _state.collect {
+                if (_state.value == WalletState.READY) {
+                    val keyChainSeed = kit.wallet()?.keyChainSeed
+                    keyChainSeed?.mnemonicCode?.toList()
+                        ?.let {
+                            emit(WalletData(it, keyChainSeed.creationTimeSeconds))
+                        }
+                }
+            }
+        }
 
     override suspend fun load(data: WalletData) {
         val seed = DeterministicSeed(data.mnemonicPhrase, null, "", data.creationTime)
@@ -40,9 +70,40 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
     }
 
     private fun createWalletFolderIfNecessay() {
-        if (walletFolder.exists()) {
-            walletFolder.mkdirs()
+        if (!walletFolder.exists()) {
+            val success = walletFolder.mkdirs()
         }
     }
+
+    private fun crateWalletKit(): WalletAppKit {
+        createWalletFolderIfNecessay()
+        return object : WalletAppKit(networkParameters, walletFolder, walletFileName) {
+            override fun onSetupCompleted() {
+                println("address = ${wallet().freshReceiveAddress()}")
+                println("set ready")
+                _state.tryEmit(WalletState.READY)
+                _balance.tryEmit(getBalance())
+                _publicAddress.tryEmit(wallet().freshReceiveAddress().toString())
+                if (wallet().importedKeys.size < 1) wallet().importKey(ECKey())
+                wallet().setupWalletListeners()
+            }
+        }
+    }
+
+    private fun Wallet.setupWalletListeners() {
+        this.addCoinsReceivedEventListener { wallet: Wallet?, tx: Transaction, prevBalance: Coin?, newBalance: Coin ->
+            println("newBalance = $newBalance")
+            _balance.tryEmit(newBalance.value)
+        }
+        this.addCoinsSentEventListener { wallet: Wallet?, tx: Transaction, prevBalance: Coin, newBalance: Coin? ->
+            println("prevBalance = $prevBalance")
+            println("newBalance = $newBalance")
+            newBalance?.value?.let { _balance.tryEmit(it) }
+        }
+    }
+
+    private fun getBalance(): Long = kit.wallet().balance.toSat()
+
+    private val TAG = "Wallet"
 }
 

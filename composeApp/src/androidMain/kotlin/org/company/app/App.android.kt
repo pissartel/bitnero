@@ -7,20 +7,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import org.company.app.di.appModule
-import org.koin.android.ext.koin.androidContext
-import org.koin.android.ext.koin.androidLogger
-import org.koin.core.context.startKoin
 
 class AndroidApp : Application() {
     companion object {
-        lateinit var INSTANCE: AndroidApp
+        lateinit var APP_CONTEXT_INSTANCE: AndroidApp
     }
 
     override fun onCreate() {
         super.onCreate()
-        INSTANCE = this
+        APP_CONTEXT_INSTANCE = this
     }
+
 }
 
 class AppActivity : ComponentActivity() {
@@ -38,5 +35,5 @@ internal actual fun openUrl(url: String?) {
         data = uri
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    AndroidApp.INSTANCE.startActivity(intent)
+    AndroidApp.APP_CONTEXT_INSTANCE.startActivity(intent)
 }

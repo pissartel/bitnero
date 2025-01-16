@@ -105,6 +105,9 @@ kotlin {
             // lightning
             implementation(libs.bitcoin.lightning.kmp)
 
+            // encrypted shared pref
+            implementation(libs.androidx.security.crypto)
+
             implementation(compose.uiTooling)
             implementation(libs.androidx.activityCompose)
             implementation(libs.kotlinx.coroutines.android)
@@ -138,6 +141,11 @@ kotlin {
         nativeMain.dependencies {
             implementation(libs.ktor.client.darwin)
             implementation(libs.sqlDelight.driver.native)
+        }
+        getByName("commonMain") {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+            }
         }
     }
 }

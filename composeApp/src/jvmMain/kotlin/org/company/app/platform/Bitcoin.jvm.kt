@@ -1,5 +1,7 @@
 package org.company.app.platform
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import org.bitcoinj.core.Coin.SATOSHI
 import org.bitcoinj.core.NetworkParameters
 import org.bitcoinj.kits.WalletAppKit
@@ -19,13 +21,13 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
     override val balance: Long
         get() = kit.wallet().getBalanceFuture(SATOSHI, Wallet.BalanceType.AVAILABLE).get().value
 
-    override suspend fun create(): WalletData {
+    override suspend fun create(): Flow<WalletData> = flow {
         createWalletFolderIfNecessay()
         val keyChainSeed = kit.wallet()?.keyChainSeed
             ?: throw WalletException.CreationException("Wallet kit failed")
-        return keyChainSeed.mnemonicCode?.toList()
+        emit(keyChainSeed.mnemonicCode?.toList()
             ?.let { WalletData(it, keyChainSeed.creationTimeSeconds) }
-            ?: throw WalletException.CreationException("Wallet kit failed")
+            ?: throw WalletException.CreationException("Wallet kit failed"))
     }
 
     override suspend fun load(data: WalletData) {

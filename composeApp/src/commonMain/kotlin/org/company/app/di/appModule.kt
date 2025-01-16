@@ -13,6 +13,10 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.company.app.data.remote.CryptoMarketClient
 import org.company.app.domain.repository.CryptoMarketDataRepository
+import org.company.app.domain.usecase.WalletDataEncryption
+import org.company.app.platform.Network
+import org.company.app.platform.createBitcoinWallet
+import org.company.app.platform.createEncryptedToolbox
 import org.company.app.presentation.ui.screens.home.CryptoMenuItem
 import org.company.app.presentation.ui.screens.home.CryptoMenuViewModel
 import org.company.app.utils.Constant
@@ -55,5 +59,8 @@ val appModule = module {
     single {
         CryptoMarketDataRepository(get())
     }
-    single { CryptoMenuViewModel(CryptoMenuItem.BITCOIN, get()) }
+    single { createBitcoinWallet(Network.REGTEST) }
+    single { createEncryptedToolbox() }
+    single { WalletDataEncryption(get()) }
+    single { CryptoMenuViewModel(CryptoMenuItem.BITCOIN, get(), get(), get()) }
 }

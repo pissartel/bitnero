@@ -14,6 +14,7 @@ compose = "1.7.1"
 agp = "8.2.2"
 androidx-activityCompose = "1.9.3"
 androidx-uiTest = "1.7.5"
+androix-security-crypto = "1.0.0"
 lifecycleViewmodelCompose = "2.8.4"
 voyager = "1.1.0-beta03"
 napier = "2.7.1"
@@ -27,12 +28,12 @@ size = "0.5.0"
 coil3 = "3.0.0-alpha08"
 coreI18n = "1.0.0-alpha01"
 
-
 [libraries]
 
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-testManifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "androidx-uiTest" }
 androidx-junit4 = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-uiTest" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "androix-security-crypto" }
 bignum = { module = "com.ionspin.kotlin:bignum", version.ref = "bignum" }
 bitcoinj = { module = "com.github.bitcoinj:bitcoinj", version.ref = "bitcoinj" }
 bitcoin-hd-wallet-kit = { module = "com.github.horizontalsystems:hd-wallet-kit-android", version.ref = "bitcoin-hd-wallet" }

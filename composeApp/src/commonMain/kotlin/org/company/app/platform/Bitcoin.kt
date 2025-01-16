@@ -1,10 +1,17 @@
 package org.company.app.platform
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.Serializable
+
 expect fun createBitcoinWallet(network: Network): BitcoinWallet
 
 abstract class BitcoinWallet {
-    abstract val balance: Long
-    abstract suspend fun create(): WalletData
+    abstract val state: StateFlow<WalletState>
+    abstract val balance: StateFlow<Long?>
+    abstract val publicAddress: StateFlow<String?>
+
+    abstract suspend fun create(): Flow<WalletData>
     abstract suspend fun load(data: WalletData)
     abstract suspend fun load(data: WalletData, password: String)
 
@@ -13,7 +20,15 @@ abstract class BitcoinWallet {
         data class LoadException(override val message: String?) : WalletException(message)
     }
 
+    @Serializable
     data class WalletData(val mnemonicPhrase: List<String>, val creationTime: Long)
+
+    enum class WalletState {
+        READY,
+        UNKNOWN,
+        NOT_CREATED,
+        CREATING
+    }
 }
 
 enum class Network(
