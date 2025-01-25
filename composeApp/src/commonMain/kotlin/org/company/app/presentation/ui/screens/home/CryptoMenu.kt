@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.DrawerDefaults.backgroundColor
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,27 +32,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import bitnero.composeapp.generated.resources.Res
 import bitnero.composeapp.generated.resources.add
-import bitnero.composeapp.generated.resources.check
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import org.company.app.domain.model.crypto.ChartBalance
+import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.platform.BitcoinWallet
 import org.company.app.presentation.ui.components.LoadingBox
-import org.company.app.presentation.ui.components.MarketChartView
+import org.company.app.presentation.ui.components.chart.MarketChartView
 import org.company.app.presentation.ui.components.MultipleModalBottomSheetLayout
 import org.company.app.presentation.ui.components.MultipleModalState
+import org.company.app.presentation.ui.components.chart.WalletChartView
+import org.company.app.presentation.ui.components.chart.WalletEmpty
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CryptoMenu(
-    cryptoMenuItem: CryptoMenuItem,
+    cryptoCurrency: CryptoCurrency,
     viewModel: CryptoMenuViewModel = koinInject(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -74,7 +74,7 @@ fun CryptoMenu(
             walletPassphraseModalBottomSheetState
         ) {
             WalletCreationPassphrase(
-                cryptoMenuItem,
+                cryptoCurrency,
                 modifier = Modifier.fillMaxWidth().height(30.dp),
                 passphrase
             ) {
@@ -107,10 +107,24 @@ fun CryptoMenu(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
+                println("state.walletState = ${state.walletState}")
                 when (state.walletState) {
                     BitcoinWallet.WalletState.UNKNOWN, BitcoinWallet.WalletState.CREATING -> LoadingBox()
                     BitcoinWallet.WalletState.READY -> {
-                        Text("Ready") // todo
+                        if (state.walletBalance != null && state.marketPrice != null) {
+                            WalletChartView(
+                                walletBalance = ChartBalance(
+                                    time = Clock.System.now().toEpochMilliseconds(),
+                                    marketValue = state.marketPrice!!,
+                                    balance = state.walletBalance!!,
+                                ),
+                                walletChartBalance = state.walletChartBalance,
+                                fiatCurrency = state.fiatCurrency,
+                                cryptoCurrency = cryptoCurrency
+                            )
+                        } else {
+                            WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency)
+                        }
                     }
 
                     BitcoinWallet.WalletState.NOT_CREATED -> Button(

@@ -92,6 +92,8 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.mp)
             implementation(libs.coil.network.ktor)
+            implementation(libs.settings)
+            implementation(libs.settings.coroutines)
         }
 
         commonTest.dependencies {
@@ -221,7 +223,7 @@ sqldelight {
         }
     }
 }
-task("testClasses"){}
+task("testClasses") {}
 dependencies {
     implementation(libs.androidx.core.i18n)
 }

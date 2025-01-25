@@ -3,6 +3,7 @@ package org.company.app.platform
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
+import org.company.app.domain.model.crypto.Transaction
 
 expect fun createBitcoinWallet(network: Network): BitcoinWallet
 
@@ -10,6 +11,7 @@ abstract class BitcoinWallet {
     abstract val state: StateFlow<WalletState>
     abstract val balance: StateFlow<Long?>
     abstract val publicAddress: StateFlow<String?>
+    abstract val transactionHistory: StateFlow<List<Transaction>>
 
     abstract suspend fun create(): Flow<WalletData>
     abstract suspend fun load(data: WalletData)

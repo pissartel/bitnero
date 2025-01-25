@@ -1,13 +1,10 @@
 package org.company.app.presentation.ui.screens.home
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,18 +15,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.TextButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key.Companion.R
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -37,13 +28,13 @@ import androidx.compose.ui.unit.dp
 import bitnero.composeapp.generated.resources.Res
 import bitnero.composeapp.generated.resources.check
 import bitnero.composeapp.generated.resources.copy
-import io.ktor.websocket.Frame
+import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.presentation.ui.components.LoadingBox
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun WalletCreationPassphrase(
-    cryptoMenuItem: CryptoMenuItem,
+    cryptoCurrency: CryptoCurrency,
     modifier: Modifier = Modifier,
     passphrase: List<String>?,
     onDismiss: () -> Unit
@@ -59,7 +50,7 @@ fun WalletCreationPassphrase(
                 passphrase?.joinToString(" ")?.let { AnnotatedString(it) }
                     ?.let { clipboardManager.setText(it) }
             },
-            colors = ButtonDefaults.buttonColors(backgroundColor = cryptoMenuItem.color)
+            colors = ButtonDefaults.buttonColors(backgroundColor = cryptoCurrency.color)
         ) {
             Icon(
                 painter = painterResource(Res.drawable.copy),

@@ -1,19 +1,20 @@
-package org.company.app.domain.usecase
+package org.company.app.data.local
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.company.app.data.repository.WalletData
 import org.company.app.platform.BitcoinWallet
 import org.company.app.platform.EncryptedToolbox
 
 class WalletDataEncryption(
     private val encryptedToolbox: EncryptedToolbox,
-) {
-    suspend fun encrypt(walletData: BitcoinWallet.WalletData) {
+) : WalletData {
+    override suspend fun encrypt(walletData: BitcoinWallet.WalletData) {
         val walletDataString = Json.encodeToString(walletData)
         encryptedToolbox.setValueFor(WALLET_DATA_KEY, walletDataString)
     }
 
-    suspend fun decrypt(): BitcoinWallet.WalletData? {
+    override suspend fun decrypt(): BitcoinWallet.WalletData? {
         val encryptedWalletDataString = encryptedToolbox.getValueFor(WALLET_DATA_KEY) ?: return null
         val walletData = Json.decodeFromString<BitcoinWallet.WalletData>(encryptedWalletDataString)
         return walletData

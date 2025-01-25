@@ -11,13 +11,14 @@ import io.ktor.client.request.headers
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import org.company.app.data.local.TransactionHistoryStorage
 import org.company.app.data.remote.CryptoMarketClient
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.domain.usecase.WalletDataEncryption
+import org.company.app.data.local.WalletDataEncryption
 import org.company.app.platform.Network
 import org.company.app.platform.createBitcoinWallet
 import org.company.app.platform.createEncryptedToolbox
-import org.company.app.presentation.ui.screens.home.CryptoMenuItem
+import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.presentation.ui.screens.home.CryptoMenuViewModel
 import org.company.app.utils.Constant
 import org.koin.dsl.module
@@ -62,5 +63,5 @@ val appModule = module {
     single { createBitcoinWallet(Network.REGTEST) }
     single { createEncryptedToolbox() }
     single { WalletDataEncryption(get()) }
-    single { CryptoMenuViewModel(CryptoMenuItem.BITCOIN, get(), get(), get()) }
+    single { CryptoMenuViewModel(CryptoCurrency.BITCOIN, get(), TransactionHistoryStorage(), get(), get()) }
 }

@@ -1,57 +1,11 @@
 package org.company.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Newspaper
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Wallet
-import androidx.compose.material.icons.outlined.Analytics
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Newspaper
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Wallet
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import cafe.adriel.voyager.navigator.tab.CurrentTab
-import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
-import cafe.adriel.voyager.navigator.tab.Tab
-import cafe.adriel.voyager.navigator.tab.TabNavigator
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.annotation.ExperimentalCoilApi
@@ -60,14 +14,9 @@ import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.util.DebugLogger
 import org.company.app.di.appModule
-import org.company.app.presentation.ui.navigation.rails.items.NavigationItem
-import org.company.app.presentation.ui.navigation.rails.navbar.NavigationSideBar
-import org.company.app.presentation.ui.navigation.tab.home.Home
 import org.company.app.presentation.ui.screens.home.CryptoMenu
-import org.company.app.presentation.ui.screens.home.CryptoMenuItem
-import org.company.app.presentation.ui.screens.home.HomeScreen
+import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.theme.AppTheme
-import org.company.app.theme.LocalThemeIsDark
 import org.koin.compose.KoinApplication
 
 @OptIn(ExperimentalCoilApi::class)
@@ -85,7 +34,7 @@ internal fun App() = AppTheme {
             Box(
                 modifier = Modifier.fillMaxSize().padding(it)
             ) {
-                CryptoMenu(CryptoMenuItem.BITCOIN)
+                CryptoMenu(CryptoCurrency.BITCOIN)
             }
         }
     }

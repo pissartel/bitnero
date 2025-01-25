@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.flow
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.ECKey
 import org.bitcoinj.core.Transaction
+import org.bitcoinj.core.TransactionConfidence
 import org.bitcoinj.kits.WalletAppKit
 import org.bitcoinj.params.RegTestParams
 import org.bitcoinj.wallet.DeterministicSeed
@@ -29,6 +30,13 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
 
     private val _publicAddress = MutableStateFlow<String?>(null)
     override val publicAddress: StateFlow<String?> = _publicAddress.asStateFlow()
+
+    private val _transactionHistory =
+        MutableStateFlow<List<org.company.app.domain.model.crypto.Transaction>>(
+            emptyList()
+        )
+    override val transactionHistory: StateFlow<List<org.company.app.domain.model.crypto.Transaction>> =
+        _transactionHistory.asStateFlow()
 
     private val _state = MutableStateFlow<WalletState>(WalletState.UNKNOWN)
     override val state: StateFlow<WalletState> = _state.asStateFlow()
@@ -69,20 +77,23 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
         kit.restoreWalletFromSeed(seed) ?: throw WalletException.LoadException("Wallet kit failed")
     }
 
-    private fun createWalletFolderIfNecessay() {
+    private fun createWalletFolderIfNecessary() {
         if (!walletFolder.exists()) {
             val success = walletFolder.mkdirs()
         }
     }
 
     private fun crateWalletKit(): WalletAppKit {
-        createWalletFolderIfNecessay()
+        createWalletFolderIfNecessary()
         return object : WalletAppKit(networkParameters, walletFolder, walletFileName) {
             override fun onSetupCompleted() {
                 println("address = ${wallet().freshReceiveAddress()}")
                 println("set ready")
                 _state.tryEmit(WalletState.READY)
                 _balance.tryEmit(getBalance())
+                _transactionHistory.tryEmit(
+                    wallet().walletTransactions.map { it.transaction.toTransaction() }
+                )
                 _publicAddress.tryEmit(wallet().freshReceiveAddress().toString())
                 if (wallet().importedKeys.size < 1) wallet().importKey(ECKey())
                 wallet().setupWalletListeners()
@@ -100,9 +111,31 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
             println("newBalance = $newBalance")
             newBalance?.value?.let { _balance.tryEmit(it) }
         }
+        this.addTransactionConfidenceEventListener { wallet, tx ->
+            println("tx = $tx")
+            this.getTransactions(true).map {
+                it.toTransaction()
+            }
+        }
     }
 
     private fun getBalance(): Long = kit.wallet().balance.toSat()
+
+    private fun org.bitcoinj.core.Transaction.toTransaction(): org.company.app.domain.model.crypto.Transaction =
+        org.company.app.domain.model.crypto.Transaction(
+            time = this.lockTime,
+            type = org.company.app.domain.model.crypto.Transaction.Type.UNKNOWN,
+            status = when (confidence.confidenceType) {
+                TransactionConfidence.ConfidenceType.BUILDING -> org.company.app.domain.model.crypto.Transaction.Status.DONE
+                TransactionConfidence.ConfidenceType.IN_CONFLICT,
+                TransactionConfidence.ConfidenceType.PENDING -> org.company.app.domain.model.crypto.Transaction.Status.PENDING
+
+                TransactionConfidence.ConfidenceType.DEAD -> org.company.app.domain.model.crypto.Transaction.Status.FAILED
+                null,
+                TransactionConfidence.ConfidenceType.UNKNOWN -> org.company.app.domain.model.crypto.Transaction.Status.UNKNOWN
+            },
+            amount = this.getValue(kit.wallet()).toSat()
+        )
 
     private val TAG = "Wallet"
 }

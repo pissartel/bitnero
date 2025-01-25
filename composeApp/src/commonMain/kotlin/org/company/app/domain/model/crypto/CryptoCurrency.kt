@@ -1,9 +1,9 @@
-package org.company.app.presentation.ui.screens.home
+package org.company.app.domain.model.crypto
 
 import androidx.compose.ui.graphics.Color
 import org.company.app.theme.cryptoColors
 
-enum class CryptoMenuItem(
+enum class CryptoCurrency(
     val id: String,
     val title: String,
     val symbol: String,
