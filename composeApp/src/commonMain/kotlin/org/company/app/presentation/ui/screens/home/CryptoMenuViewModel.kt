@@ -34,10 +34,10 @@ class CryptoMenuViewModel(
 ) : BaseViewModel<CryptoMenuSate, CryptoMenuEffect>() {
 
     init {
-        // TODO try to load wallet from phrase and creation time
-//        viewModelScope.launch {
-//            val walletData = walletDataEncryption.decrypt()
-//        }
+        viewModelScope.launch {
+            val walletData = walletDataEncryption.decrypt()
+            walletData?.let { bitcoinWallet.load(it) }
+        }
         synchroniseWalletData()
         fetchCryptoData()
     }

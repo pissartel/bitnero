@@ -45,7 +45,7 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
 
     init {
         // TODO check if there is already a wallet
-        _state.tryEmit(WalletState.NOT_CREATED)
+        _state.tryEmit(WalletState.UNKNOWN)
     }
 
     override suspend fun create(): Flow<WalletData> =
@@ -70,11 +70,13 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
     override suspend fun load(data: WalletData) {
         val seed = DeterministicSeed(data.mnemonicPhrase, null, "", data.creationTime)
         kit.restoreWalletFromSeed(seed) ?: throw WalletException.LoadException("Wallet kit failed")
+        _state.tryEmit(WalletState.READY)
     }
 
     override suspend fun load(data: WalletData, password: String) {
         val seed = DeterministicSeed(data.mnemonicPhrase, null, password, data.creationTime)
         kit.restoreWalletFromSeed(seed) ?: throw WalletException.LoadException("Wallet kit failed")
+        _state.tryEmit(WalletState.READY)
     }
 
     private fun createWalletFolderIfNecessary() {
