@@ -14,8 +14,8 @@ abstract class BitcoinWallet {
     abstract val transactionHistory: StateFlow<List<Transaction>>
 
     abstract suspend fun create(): Flow<WalletData>
-    abstract suspend fun load(data: WalletData)
-    abstract suspend fun load(data: WalletData, password: String)
+    abstract suspend fun load(data: WalletData?)
+    abstract suspend fun load(data: WalletData?, password: String)
 
     sealed class WalletException(override val message: String?) : Exception(message) {
         data class CreationException(override val message: String?) : WalletException(message)

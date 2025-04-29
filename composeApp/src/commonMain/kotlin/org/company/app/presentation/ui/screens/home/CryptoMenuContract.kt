@@ -6,7 +6,12 @@ import org.company.app.domain.model.crypto.ChartPrice
 import org.company.app.domain.model.fiat.FiatCurrency
 import org.company.app.platform.BitcoinWallet
 import org.company.app.presentation.ui.base.UiEffect
+import org.company.app.presentation.ui.base.UiEvent
 import org.company.app.presentation.ui.base.UiState
+
+sealed interface CryptoMenuEvent : UiEvent {
+    data object OnCreateWalletClicked : CryptoMenuEvent
+}
 
 data class CryptoMenuSate(
     val walletState: BitcoinWallet.WalletState,
@@ -19,5 +24,5 @@ data class CryptoMenuSate(
 ) : UiState
 
 sealed interface CryptoMenuEffect : UiEffect {
-    data class WalletCreated(val mnemonics: List<String>) : CryptoMenuEffect
+    data class ShowCreatedWalletSheet(val mnemonics: List<String>) : CryptoMenuEffect
 }

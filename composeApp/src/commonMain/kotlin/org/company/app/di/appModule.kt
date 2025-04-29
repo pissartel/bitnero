@@ -14,10 +14,9 @@ import kotlinx.serialization.json.Json
 import org.company.app.data.local.TransactionHistoryStorage
 import org.company.app.data.remote.CryptoMarketClient
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.data.local.WalletDataEncryption
+import org.company.app.data.local.WalletDataRepository
 import org.company.app.platform.Network
 import org.company.app.platform.createBitcoinWallet
-import org.company.app.platform.createEncryptedToolbox
 import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.presentation.ui.screens.home.CryptoMenuViewModel
 import org.company.app.utils.Constant
@@ -60,8 +59,8 @@ val appModule = module {
     single {
         CryptoMarketDataRepository(get())
     }
-    single { createBitcoinWallet(Network.REGTEST) }
-    single { createEncryptedToolbox() }
-    single { WalletDataEncryption(get()) }
+    single { createBitcoinWallet(Network.TESTNET) }
+    //single { createEncryptedToolbox() }
+    single { WalletDataRepository() }
     single { CryptoMenuViewModel(CryptoCurrency.BITCOIN, get(), TransactionHistoryStorage(), get(), get()) }
 }

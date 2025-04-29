@@ -111,7 +111,12 @@ fun CryptoMenu(
                 when (state.walletState) {
                     BitcoinWallet.WalletState.UNKNOWN, BitcoinWallet.WalletState.CREATING -> LoadingBox()
                     BitcoinWallet.WalletState.READY -> {
-                        if (state.walletBalance != null && state.marketPrice != null) {
+                        println("state.walletState = ${state.walletState}")
+                        if (state.walletBalance != null
+                            && state.walletBalance?.toInt() != 0
+                            && state.marketPrice != null
+                        ) {
+                            println("if wallet chart view ")
                             WalletChartView(
                                 walletBalance = ChartBalance(
                                     time = Clock.System.now().toEpochMilliseconds(),
@@ -123,6 +128,7 @@ fun CryptoMenu(
                                 cryptoCurrency = cryptoCurrency
                             )
                         } else {
+                            println("if empty wallet")
                             WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency)
                         }
                     }
@@ -135,7 +141,7 @@ fun CryptoMenu(
                         border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
                         modifier = Modifier.size(50.dp),
                         onClick = {
-                            viewModel.createWallet()
+                            viewModel.emitEvent(CryptoMenuEvent.OnCreateWalletClicked)
                         }
                     ) {
                         Icon(
@@ -176,7 +182,7 @@ fun CryptoMenu(
         LaunchedEffect(effectFlow, state) {
             effectFlow.onEach { effect ->
                 when (effect) {
-                    is CryptoMenuEffect.WalletCreated -> {
+                    is CryptoMenuEffect.ShowCreatedWalletSheet -> {
                         passphrase = effect.mnemonics
                         walletPassphraseModalBottomSheetState.show()
                     }

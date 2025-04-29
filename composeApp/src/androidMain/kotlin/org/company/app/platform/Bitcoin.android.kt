@@ -5,17 +5,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
-import org.bitcoinj.core.Coin
-import org.bitcoinj.core.ECKey
+import org.bitcoinj.base.Coin
 import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.TransactionConfidence
+import org.bitcoinj.crypto.ECKey
 import org.bitcoinj.kits.WalletAppKit
 import org.bitcoinj.params.RegTestParams
 import org.bitcoinj.wallet.DeterministicSeed
 import org.bitcoinj.wallet.Wallet
 import org.company.app.AndroidApp.Companion.APP_CONTEXT_INSTANCE
 import java.io.File
-
 
 actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : BitcoinWallet() {
 
@@ -44,7 +43,6 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
     private var kit: WalletAppKit = crateWalletKit()
 
     init {
-        // TODO check if there is already a wallet
         _state.tryEmit(WalletState.UNKNOWN)
     }
 
@@ -57,6 +55,7 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
 
             // Wait for Wallet set up to emit wallet data
             _state.collect {
+                println("state = $_state")
                 if (_state.value == WalletState.READY) {
                     val keyChainSeed = kit.wallet()?.keyChainSeed
                     keyChainSeed?.mnemonicCode?.toList()
@@ -67,15 +66,31 @@ actual fun createBitcoinWallet(network: Network): BitcoinWallet = object : Bitco
             }
         }
 
-    override suspend fun load(data: WalletData) {
+    override suspend fun load(data: WalletData?) {
+        if (data == null) {
+            _state.tryEmit(WalletState.NOT_CREATED)
+            return
+        }
         val seed = DeterministicSeed(data.mnemonicPhrase, null, "", data.creationTime)
-        kit.restoreWalletFromSeed(seed) ?: throw WalletException.LoadException("Wallet kit failed")
+        val walletKit = kit.restoreWalletFromSeed(seed)
+        if (walletKit == null) {
+            _state.tryEmit(WalletState.NOT_CREATED)
+            throw WalletException.LoadException("Wallet kit failed")
+        }
         _state.tryEmit(WalletState.READY)
     }
 
-    override suspend fun load(data: WalletData, password: String) {
+    override suspend fun load(data: WalletData?, password: String) {
+        if (data == null) {
+            _state.tryEmit(WalletState.NOT_CREATED)
+            return
+        }
         val seed = DeterministicSeed(data.mnemonicPhrase, null, password, data.creationTime)
-        kit.restoreWalletFromSeed(seed) ?: throw WalletException.LoadException("Wallet kit failed")
+        val walletKit = kit.restoreWalletFromSeed(seed)
+        if (walletKit == null) {
+            _state.tryEmit(WalletState.NOT_CREATED)
+            throw WalletException.LoadException("Wallet kit failed")
+        }
         _state.tryEmit(WalletState.READY)
     }
 

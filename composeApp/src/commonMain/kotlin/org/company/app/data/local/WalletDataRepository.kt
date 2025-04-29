@@ -1,21 +1,27 @@
 package org.company.app.data.local
 
+import com.russhwolf.settings.set
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.company.app.data.repository.WalletData
 import org.company.app.platform.BitcoinWallet
-import org.company.app.platform.EncryptedToolbox
+import org.company.app.platform.createEncryptedLocalPref
 
-class WalletDataEncryption(
-    private val encryptedToolbox: EncryptedToolbox,
-) : WalletData {
+class WalletDataRepository : WalletData {
+
+    private val encryptedLocalPref = createEncryptedLocalPref("wallet-data")
+
     override suspend fun encrypt(walletData: BitcoinWallet.WalletData) {
         val walletDataString = Json.encodeToString(walletData)
-        encryptedToolbox.setValueFor(WALLET_DATA_KEY, walletDataString)
+        encryptedLocalPref[WALLET_DATA_KEY] = walletDataString
     }
 
     override suspend fun decrypt(): BitcoinWallet.WalletData? {
-        val encryptedWalletDataString = encryptedToolbox.getValueFor(WALLET_DATA_KEY) ?: return null
+        val encryptedWalletDataString = encryptedLocalPref.getString(
+            WALLET_DATA_KEY,
+            defaultValue = ""
+        )
+        if (encryptedWalletDataString.isEmpty()) return null
         val walletData = Json.decodeFromString<BitcoinWallet.WalletData>(encryptedWalletDataString)
         return walletData
     }

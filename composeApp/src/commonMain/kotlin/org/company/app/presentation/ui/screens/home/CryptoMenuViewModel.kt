@@ -14,7 +14,7 @@ import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.domain.model.fiat.FiatCurrency
 import org.company.app.domain.model.fiat.FiatCurrency.Companion.getLocalFiatCurrency
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.data.local.WalletDataEncryption
+import org.company.app.data.local.WalletDataRepository
 import org.company.app.data.repository.TransactionHistory
 import org.company.app.domain.model.Period.Companion.toTimeMillis
 import org.company.app.domain.model.crypto.ChartBalance
@@ -30,19 +30,37 @@ class CryptoMenuViewModel(
     private val bitcoinWallet: BitcoinWallet,
     private val transactionHistory: TransactionHistory,
     private val cryptoDataRepository: CryptoMarketDataRepository,
-    private val walletDataEncryption: WalletDataEncryption
-) : BaseViewModel<CryptoMenuSate, CryptoMenuEffect>() {
+    private val walletDataRepository: WalletDataRepository
+) : BaseViewModel<CryptoMenuEvent, CryptoMenuSate, CryptoMenuEffect>() {
 
     init {
         viewModelScope.launch {
-            val walletData = walletDataEncryption.decrypt()
-            walletData?.let { bitcoinWallet.load(it) }
+            val walletData = walletDataRepository.decrypt()
+            bitcoinWallet.load(walletData)
         }
         synchroniseWalletData()
         fetchCryptoData()
     }
 
-    fun createWallet() {
+    override fun createInitialState(): CryptoMenuSate {
+        return CryptoMenuSate(
+            walletState = BitcoinWallet.WalletState.UNKNOWN,
+            walletBalance = null,
+            walletPrice = null,
+            marketPrice = null,
+            fiatCurrency = getLocalFiatCurrency(),
+            walletChartBalance = emptyMap(),
+            marketChartPrices = emptyMap()
+        )
+    }
+
+    override fun handleEvent(event: CryptoMenuEvent) {
+        when (event) {
+            CryptoMenuEvent.OnCreateWalletClicked -> createWallet()
+        }
+    }
+
+    private fun createWallet() {
         viewModelScope.launch {
             bitcoinWallet.create()
                 .asResult()
@@ -51,8 +69,8 @@ class CryptoMenuViewModel(
                 }
                 .doOnSuccess { walletData ->
                     println("wallet create at ${walletData.creationTime}")
-                    walletDataEncryption.encrypt(walletData)
-                    sendEffect { CryptoMenuEffect.WalletCreated(walletData.mnemonicPhrase) }
+                    walletDataRepository.encrypt(walletData)
+                    sendEffect { CryptoMenuEffect.ShowCreatedWalletSheet(walletData.mnemonicPhrase) }
                 }
                 .collect()
         }
@@ -191,18 +209,6 @@ class CryptoMenuViewModel(
         return combine(enums) { arrayOfPairs ->
             arrayOfPairs.associate { it }
         }
-    }
-
-    override fun createInitialState(): CryptoMenuSate {
-        return CryptoMenuSate(
-            walletState = BitcoinWallet.WalletState.UNKNOWN,
-            walletBalance = null,
-            walletPrice = null,
-            marketPrice = null,
-            fiatCurrency = getLocalFiatCurrency(),
-            walletChartBalance = emptyMap(),
-            marketChartPrices = emptyMap()
-        )
     }
 
     private inline fun <T : ChartData> List<T>.findForClosestTime(value: Long): T? =
