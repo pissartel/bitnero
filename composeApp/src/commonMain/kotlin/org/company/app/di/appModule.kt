@@ -14,10 +14,13 @@ import kotlinx.serialization.json.Json
 import org.company.app.data.local.TransactionHistoryStorage
 import org.company.app.data.remote.CryptoMarketClient
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.data.local.WalletDataRepository
-import org.company.app.platform.Network
-import org.company.app.platform.createBitcoinWallet
+import org.company.app.data.local.WalletDataEncryptionRepository
+import org.company.app.data.repository.TransactionHistory
+import org.company.app.platform.createPlatformBitcoinWallet
 import org.company.app.domain.model.crypto.CryptoCurrency
+import org.company.app.domain.model.wallet.Network
+import org.company.app.domain.repository.BitcoinWallet
+import org.company.app.domain.repository.impl.BitcoinWalletImpl
 import org.company.app.presentation.ui.screens.home.CryptoMenuViewModel
 import org.company.app.utils.Constant
 import org.koin.dsl.module
@@ -59,8 +62,20 @@ val appModule = module {
     single {
         CryptoMarketDataRepository(get())
     }
-    single { createBitcoinWallet(Network.TESTNET) }
+    single { createPlatformBitcoinWallet(Network.TESTNET) }
+    single<BitcoinWallet> { BitcoinWalletImpl(get()) }
     //single { createEncryptedToolbox() }
-    single { WalletDataRepository() }
-    single { CryptoMenuViewModel(CryptoCurrency.BITCOIN, get(), TransactionHistoryStorage(), get(), get()) }
+    single<TransactionHistory> {
+        TransactionHistoryStorage()
+    }
+    single { WalletDataEncryptionRepository() }
+    single {
+        CryptoMenuViewModel(
+            CryptoCurrency.BITCOIN,
+            get(),
+            get(),
+            get(),
+            get()
+        )
+    }
 }

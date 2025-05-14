@@ -42,7 +42,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.company.app.domain.model.crypto.ChartBalance
 import org.company.app.domain.model.crypto.CryptoCurrency
-import org.company.app.platform.BitcoinWallet
 import org.company.app.presentation.ui.components.LoadingBox
 import org.company.app.presentation.ui.components.chart.MarketChartView
 import org.company.app.presentation.ui.components.MultipleModalBottomSheetLayout
@@ -109,8 +108,8 @@ fun CryptoMenu(
             ) {
                 println("state.walletState = ${state.walletState}")
                 when (state.walletState) {
-                    BitcoinWallet.WalletState.UNKNOWN, BitcoinWallet.WalletState.CREATING -> LoadingBox()
-                    BitcoinWallet.WalletState.READY -> {
+                    WalletState.UNKNOWN, WalletState.CREATING -> LoadingBox()
+                    WalletState.READY -> {
                         println("state.walletState = ${state.walletState}")
                         if (state.walletBalance != null
                             && state.walletBalance?.toInt() != 0
@@ -133,7 +132,7 @@ fun CryptoMenu(
                         }
                     }
 
-                    BitcoinWallet.WalletState.NOT_CREATED -> Button(
+                    WalletState.NOT_CREATED -> Button(
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             backgroundColor = MaterialTheme.colorScheme.surface

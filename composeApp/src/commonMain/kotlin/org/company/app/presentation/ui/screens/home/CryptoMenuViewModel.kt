@@ -14,15 +14,15 @@ import org.company.app.domain.model.crypto.CryptoCurrency
 import org.company.app.domain.model.fiat.FiatCurrency
 import org.company.app.domain.model.fiat.FiatCurrency.Companion.getLocalFiatCurrency
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.data.local.WalletDataRepository
+import org.company.app.data.local.WalletDataEncryptionRepository
 import org.company.app.data.repository.TransactionHistory
 import org.company.app.domain.model.Period.Companion.toTimeMillis
 import org.company.app.domain.model.crypto.ChartBalance
 import org.company.app.domain.model.crypto.ChartData
+import org.company.app.domain.repository.BitcoinWallet
 import org.company.app.domain.usecase.asResult
 import org.company.app.domain.usecase.doOnFailure
 import org.company.app.domain.usecase.doOnSuccess
-import org.company.app.platform.BitcoinWallet
 import org.company.app.presentation.ui.base.BaseViewModel
 
 class CryptoMenuViewModel(
@@ -30,7 +30,7 @@ class CryptoMenuViewModel(
     private val bitcoinWallet: BitcoinWallet,
     private val transactionHistory: TransactionHistory,
     private val cryptoDataRepository: CryptoMarketDataRepository,
-    private val walletDataRepository: WalletDataRepository
+    private val walletDataRepository: WalletDataEncryptionRepository
 ) : BaseViewModel<CryptoMenuEvent, CryptoMenuSate, CryptoMenuEffect>() {
 
     init {
@@ -44,7 +44,7 @@ class CryptoMenuViewModel(
 
     override fun createInitialState(): CryptoMenuSate {
         return CryptoMenuSate(
-            walletState = BitcoinWallet.WalletState.UNKNOWN,
+            walletState = WalletState.UNKNOWN,
             walletBalance = null,
             walletPrice = null,
             marketPrice = null,
@@ -62,7 +62,7 @@ class CryptoMenuViewModel(
 
     private fun createWallet() {
         viewModelScope.launch {
-            bitcoinWallet.create()
+            bitcoinWallet.start()
                 .asResult()
                 .doOnFailure {
                     println("error = $it")
@@ -99,7 +99,7 @@ class CryptoMenuViewModel(
         viewModelScope.launch {
             bitcoinWallet.state.collect {
                 setState { copy(walletState = it) }
-                if (it == BitcoinWallet.WalletState.READY) {
+                if (it == WalletState.READY) {
                     syncWalletChart()
                 }
             }
@@ -109,7 +109,7 @@ class CryptoMenuViewModel(
 
     private fun syncWalletChart() {
         println("sync wallet chart")
-        if (currentState.walletState != BitcoinWallet.WalletState.READY) return
+        if (currentState.walletState != WalletState.READY) return
         if (currentState.walletBalance == null) return
         val marketChartPrices = currentState.marketChartPrices
         if (marketChartPrices.isEmpty()) return

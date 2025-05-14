@@ -1,10 +1,10 @@
 package org.company.app.presentation.ui.screens.home
 
+import WalletState
 import org.company.app.domain.model.Period
 import org.company.app.domain.model.crypto.ChartBalance
 import org.company.app.domain.model.crypto.ChartPrice
 import org.company.app.domain.model.fiat.FiatCurrency
-import org.company.app.platform.BitcoinWallet
 import org.company.app.presentation.ui.base.UiEffect
 import org.company.app.presentation.ui.base.UiEvent
 import org.company.app.presentation.ui.base.UiState
@@ -14,7 +14,7 @@ sealed interface CryptoMenuEvent : UiEvent {
 }
 
 data class CryptoMenuSate(
-    val walletState: BitcoinWallet.WalletState,
+    val walletState: WalletState,
     val walletBalance: Long?,
     val walletPrice: Double?,
     val marketPrice: Double?,
