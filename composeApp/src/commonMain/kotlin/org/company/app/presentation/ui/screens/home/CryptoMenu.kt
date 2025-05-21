@@ -1,8 +1,13 @@
 package org.company.app.presentation.ui.screens.home
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,9 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import bitnero.composeapp.generated.resources.Res
 import bitnero.composeapp.generated.resources.add
+import bitnero.composeapp.generated.resources.btc_icon
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -86,95 +98,103 @@ fun CryptoMenu(
     MultipleModalBottomSheetLayout(
         multipleModalStates = arrayOf(modalBottomSheetStateWalletPassphrase),
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Text("Wallet", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(16.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-                        RoundedCornerShape(16.dp)
-                    )
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
+        Box {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                println("state.walletState = ${state.walletState}")
-                when (state.walletState) {
-                    WalletState.UNKNOWN, WalletState.CREATING -> LoadingBox()
-                    WalletState.READY -> {
-                        println("state.walletState = ${state.walletState}")
-                        if (state.walletBalance != null
-                            && state.walletBalance?.toInt() != 0
-                            && state.marketPrice != null
-                        ) {
-                            println("if wallet chart view ")
-                            WalletChartView(
-                                walletBalance = ChartBalance(
-                                    time = Clock.System.now().toEpochMilliseconds(),
-                                    marketValue = state.marketPrice!!,
-                                    balance = state.walletBalance!!,
-                                ),
-                                walletChartBalance = state.walletChartBalance,
-                                fiatCurrency = state.fiatCurrency,
-                                cryptoCurrency = cryptoCurrency
-                            )
-                        } else {
-                            println("if empty wallet")
-                            WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency)
-                        }
-                    }
-
-                    WalletState.NOT_CREATED -> Button(
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = MaterialTheme.colorScheme.surface
-                        ),
-                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
-                        modifier = Modifier.size(50.dp),
-                        onClick = {
-                            viewModel.emitEvent(CryptoMenuEvent.OnCreateWalletClicked)
-                        }
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.add),
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                            tint = MaterialTheme.colorScheme.onBackground
+                Text("Wallet", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(
+                            BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                            RoundedCornerShape(16.dp)
                         )
-                    }
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    println("state.walletState = ${state.walletState}")
+                    when (state.walletState) {
+                        WalletState.UNKNOWN, WalletState.CREATING -> LoadingBox()
+                        WalletState.READY -> {
+                            println("state.walletState = ${state.walletState}")
+                            if (state.walletBalance != null
+                                && state.walletBalance?.toInt() != 0
+                                && state.marketPrice != null
+                            ) {
+                                println("if wallet chart view ")
+                                WalletChartView(
+                                    walletBalance = ChartBalance(
+                                        time = Clock.System.now().toEpochMilliseconds(),
+                                        marketValue = state.marketPrice!!,
+                                        balance = state.walletBalance!!,
+                                    ),
+                                    walletChartBalance = state.walletChartBalance,
+                                    fiatCurrency = state.fiatCurrency,
+                                    cryptoCurrency = cryptoCurrency
+                                )
+                            } else {
+                                println("if empty wallet")
+                                WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency)
+                            }
+                        }
 
+                        WalletState.NOT_CREATED -> Button(
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                backgroundColor = MaterialTheme.colorScheme.surface
+                            ),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
+                            modifier = Modifier.size(50.dp),
+                            onClick = {
+                                viewModel.emitEvent(CryptoMenuEvent.OnCreateWalletClicked)
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.add),
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                Text("Cours", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(
+                            BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    MarketChartView(
+                        marketPrice = state.marketPrice,
+                        chartPrices = state.marketChartPrices,
+                        fiatCurrency = state.fiatCurrency
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
-
-            Text("Cours", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(16.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-                        RoundedCornerShape(16.dp)
-                    )
-                    .padding(16.dp)
+            CryptoFabButton(
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
             ) {
-                MarketChartView(
-                    marketPrice = state.marketPrice,
-                    chartPrices = state.marketChartPrices,
-                    fiatCurrency = state.fiatCurrency
-                )
+
             }
         }
 
@@ -188,5 +208,48 @@ fun CryptoMenu(
                 }
             }.collect()
         }
+    }
+}
+
+
+@Composable
+fun CryptoFabButton(
+    modifier: Modifier = Modifier,
+    size: Dp = 82.dp,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        label = "scale"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 8.dp,
+        label = "elevation"
+    )
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .scale(scale) // effet d'enfoncement
+            //.shadow(elevation, CircleShape, clip = false) // ombre animée
+            .clip(CircleShape) // bouton rond
+            .background(Color.Transparent)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null // supprime le ripple
+            ) {
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(resource = Res.drawable.btc_icon), // todo  CryptoCurrency.BITCOIN.icon
+            contentDescription = "Floating Button",
+            tint = CryptoCurrency.BITCOIN.color
+        )
     }
 }
