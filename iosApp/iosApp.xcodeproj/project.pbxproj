@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		94327FE72DCA55050013D9C9 /* IOSBitcoinWallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94327FE62DCA55050013D9C9 /* IOSBitcoinWallet.swift */; };
+		943944F62DD4C84800664512 /* IOSBitcoinWalletFactoryImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943944F52DD4C84800664512 /* IOSBitcoinWalletFactoryImpl.swift */; };
 		948E4E712DCA07740027D524 /* BitcoinDevKit in Frameworks */ = {isa = PBXBuildFile; productRef = 948E4E702DCA07740027D524 /* BitcoinDevKit */; };
 		A93A953B29CC810C00F8E227 /* iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A93A953A29CC810C00F8E227 /* iosApp.swift */; };
 		A93A953F29CC810D00F8E227 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A93A953E29CC810D00F8E227 /* Assets.xcassets */; };
@@ -16,6 +17,7 @@
 
 /* Begin PBXFileReference section */
 		94327FE62DCA55050013D9C9 /* IOSBitcoinWallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBitcoinWallet.swift; sourceTree = "<group>"; };
+		943944F52DD4C84800664512 /* IOSBitcoinWalletFactoryImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSBitcoinWalletFactoryImpl.swift; sourceTree = "<group>"; };
 		A93A953729CC810C00F8E227 /* Bitnero.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bitnero.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A93A953A29CC810C00F8E227 /* iosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iosApp.swift; sourceTree = "<group>"; };
 		A93A953E29CC810D00F8E227 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -38,6 +40,7 @@
 			isa = PBXGroup;
 			children = (
 				94327FE62DCA55050013D9C9 /* IOSBitcoinWallet.swift */,
+				943944F52DD4C84800664512 /* IOSBitcoinWalletFactoryImpl.swift */,
 			);
 			path = wallet;
 			sourceTree = "<group>";
@@ -182,6 +185,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				94327FE72DCA55050013D9C9 /* IOSBitcoinWallet.swift in Sources */,
+				943944F62DD4C84800664512 /* IOSBitcoinWalletFactoryImpl.swift in Sources */,
 				A93A953B29CC810C00F8E227 /* iosApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

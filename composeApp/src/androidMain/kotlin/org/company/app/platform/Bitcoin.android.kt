@@ -1,11 +1,11 @@
 package org.company.app.platform
 
 import org.bitcoinj.base.Coin
+import org.bitcoinj.core.NetworkParameters
 import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.TransactionConfidence
 import org.bitcoinj.crypto.ECKey
 import org.bitcoinj.kits.WalletAppKit
-import org.bitcoinj.params.RegTestParams
 import org.bitcoinj.wallet.DeterministicSeed
 import org.bitcoinj.wallet.Wallet
 import org.company.app.AndroidApp.Companion.APP_CONTEXT_INSTANCE
@@ -19,28 +19,30 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
             APP_CONTEXT_INSTANCE.externalCacheDir, "wallet"
         )
         private val walletFileName = "bitcoin-wallet"
-        private val networkParameters = RegTestParams.get()//NetworkParameters.fromID(network.id)
+        private val networkParameters =  NetworkParameters.fromID("org.bitcoin.production")
 
-        private var kit: WalletAppKit = crateWalletKit()
+        private var kit: WalletAppKit = createAndSetupWalletKit()
+
+        private var isSetup: Boolean = false
 
         private var setupListener: (() -> Unit)? = null
         private var balanceListener: ((Long) -> Unit)? = null
         private var transactionsListener: ((org.company.app.domain.model.crypto.Transaction) -> Unit)? =
             null
 
-        override suspend fun start(): Boolean {
+        override fun create(): Boolean {
             kit.setBlockingStartup(false)
             kit.startAsync()
             return true
         }
 
-        override suspend fun load(mnemonicPhrase: List<String>, creationTime: Long): Boolean {
+        override fun load(mnemonicPhrase: List<String>, creationTime: Long): Boolean {
             val seed = DeterministicSeed(mnemonicPhrase, null, "", creationTime)
             kit.restoreWalletFromSeed(seed) ?: return false
             return true
         }
 
-        override suspend fun load(
+        override fun load(
             mnemonicPhrase: List<String>,
             creationTime: Long,
             password: String
@@ -50,7 +52,7 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
             return true
         }
 
-        override fun setSetupListener(listener: () -> Unit) {
+        override fun setOnSetupListener(listener: () -> Unit) {
             setupListener = listener
         }
 
@@ -65,6 +67,14 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
         override fun getBalance(): Long {
             return kit.wallet().balance.toSat()
         }
+
+        override fun getTransactions(): List<org.company.app.domain.model.crypto.Transaction> {
+            return kit.wallet().getTransactions(true).map {
+                it.toTransaction()
+            }
+        }
+
+        override fun isSetup(): Boolean = isSetup
 
         override fun getPublicAddress(): String {
             return kit.wallet().freshReceiveAddress().toString()
@@ -86,7 +96,7 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
             }
         }
 
-        private fun crateWalletKit(): WalletAppKit {
+        private fun createAndSetupWalletKit(): WalletAppKit {
             createWalletFolderIfNecessary()
             return object : WalletAppKit(networkParameters, walletFolder, walletFileName) {
                 override fun onSetupCompleted() {
@@ -94,6 +104,7 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
                     println("set ready")
                     if (wallet().importedKeys.size < 1) wallet().importKey(ECKey())
                     wallet().setupWalletListeners()
+                    isSetup = true
                     setupListener?.invoke()
                 }
             }

@@ -62,7 +62,7 @@ class CryptoMenuViewModel(
 
     private fun createWallet() {
         viewModelScope.launch {
-            bitcoinWallet.start()
+            bitcoinWallet.create()
                 .asResult()
                 .doOnFailure {
                     println("error = $it")
@@ -178,7 +178,7 @@ class CryptoMenuViewModel(
                             { it.second })
                     )
                 }
-                println("walletChartBalance = ${currentState.walletChartBalance}")
+                //println("walletChartBalance = ${currentState.walletChartBalance}")
             }
         }
     }

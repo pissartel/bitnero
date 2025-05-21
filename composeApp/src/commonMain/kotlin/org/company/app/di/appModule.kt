@@ -40,7 +40,7 @@ val appModule = module {
                 level = LogLevel.ALL
                 logger = object : Logger {
                     override fun log(message: String) {
-                        println(message)
+                       // println(message)
                     }
                 }
                 filter { filter -> filter.url.host.contains("api.coingecko.com") }

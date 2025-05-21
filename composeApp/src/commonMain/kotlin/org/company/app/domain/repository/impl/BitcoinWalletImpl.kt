@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import org.company.app.domain.model.wallet.WalletData
 import org.company.app.domain.model.wallet.WalletException
@@ -32,9 +34,6 @@ class BitcoinWalletImpl(private val platformBitcoinWallet: PlatformBitcoinWallet
     init {
         _state.tryEmit(WalletState.UNKNOWN)
         with(platformBitcoinWallet) {
-            setSetupListener {
-                _state.tryEmit(WalletState.READY)
-            }
             setBalanceListener {
                 _balance.tryEmit(it)
             }
@@ -43,38 +42,51 @@ class BitcoinWalletImpl(private val platformBitcoinWallet: PlatformBitcoinWallet
                     _transactionHistory.value.plus(it)
                 )
             }
+            println("setup listener")
+            setOnSetupListener {
+                println("setup listener ready !")
+                _state.tryEmit(WalletState.READY)
+            }
         }
     }
 
-    override suspend fun start(): Flow<WalletData> =
+    override suspend fun create(): Flow<WalletData> =
         flow {
             _state.tryEmit(WalletState.CREATING)
+            print("before platformBitcoinWallet")
 
-            val success = platformBitcoinWallet.start()
+            val success = platformBitcoinWallet.create()
+
+            print("before platformBitcoinWallet")
+            print("success = $success@")
+
             if (!success) {
+                print("platformBitcoinWallet.create() failed")
                 _state.tryEmit(WalletState.NOT_CREATED)
                 throw WalletException.StartException("Wallet start failed")
             }
 
             // Wait for Wallet set up to emit wallet data
-            _state.collect {
-                println("state = $_state")
-                if (_state.value == WalletState.READY) {
-                    val mnemonicPhrase = platformBitcoinWallet.getMnemonicPhrase()
-                        ?: throw WalletException.LoadException("Mnemonic phrase is null")
-                    val creationTime = platformBitcoinWallet.getCreationTime()
-                        ?: throw WalletException.LoadException("Creation time is null")
-                    emit(
-                        WalletData(
-                            mnemonicPhrase,
-                            creationTime
-                        )
+            _state.filter { it == WalletState.READY }.first()
+
+            println("state = ${_state.value}")
+            if (_state.value == WalletState.READY) {
+                val mnemonicPhrase = platformBitcoinWallet.getMnemonicPhrase()
+                    ?: throw WalletException.StartException("Mnemonic phrase is null")
+                val creationTime = platformBitcoinWallet.getCreationTime()
+                    ?: throw WalletException.StartException("Creation time is null")
+
+                emit(
+                    WalletData(
+                        mnemonicPhrase,
+                        creationTime
                     )
-                }
+                )
             }
         }
 
     override suspend fun load(data: WalletData?) {
+        println("load : $data")
         if (data == null) {
             _state.tryEmit(WalletState.NOT_CREATED)
             return
