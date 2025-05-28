@@ -106,7 +106,7 @@ fun CryptoMenu(
         ) {
             ActionMenu(
                 cryptoCurrency,
-                onBuyClick = {},
+                onBuyClick = {viewModel.emitEvent(CryptoMenuEvent.OnBuyClicked("50"))},
                 onSellClick = {},
                 onSendClick = {},
                 onReceiveClick = {},

@@ -13,6 +13,7 @@ sealed interface CryptoMenuEvent : UiEvent {
     data object OnCreateWalletClicked : CryptoMenuEvent
     data object OnActionMenuClicked : CryptoMenuEvent
     data object OnPurchaseClicked : CryptoMenuEvent
+    data class OnBuyClicked(val amount: String) : CryptoMenuEvent
 }
 
 data class CryptoMenuSate(

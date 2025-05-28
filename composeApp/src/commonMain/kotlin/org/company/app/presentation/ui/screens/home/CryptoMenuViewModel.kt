@@ -1,12 +1,14 @@
 package org.company.app.presentation.ui.screens.home
 
 import androidx.lifecycle.viewModelScope
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import org.company.app.domain.model.Period
 import org.company.app.domain.model.crypto.ChartPrice
@@ -15,6 +17,8 @@ import org.company.app.domain.model.fiat.FiatCurrency
 import org.company.app.domain.model.fiat.FiatCurrency.Companion.getLocalFiatCurrency
 import org.company.app.domain.repository.CryptoMarketDataRepository
 import org.company.app.data.local.WalletDataEncryptionRepository
+import org.company.app.data.remote.ExchangeClient
+import org.company.app.data.repository.ExchangeRepository
 import org.company.app.data.repository.TransactionHistory
 import org.company.app.domain.model.Period.Companion.toTimeMillis
 import org.company.app.domain.model.crypto.ChartBalance
@@ -28,6 +32,7 @@ import org.company.app.presentation.ui.base.BaseViewModel
 class CryptoMenuViewModel(
     private val cryptoCurrency: CryptoCurrency = CryptoCurrency.BITCOIN,
     private val bitcoinWallet: BitcoinWallet,
+    private val exchangeRepository: ExchangeRepository,
     private val transactionHistory: TransactionHistory,
     private val cryptoDataRepository: CryptoMarketDataRepository,
     private val walletDataRepository: WalletDataEncryptionRepository
@@ -61,6 +66,8 @@ class CryptoMenuViewModel(
             CryptoMenuEvent.OnPurchaseClicked -> bitcoinWallet.publicAddress.value?.let {
                 sendEffect { CryptoMenuEffect.OpenPurchaseActivity(it) }
             }
+
+            is CryptoMenuEvent.OnBuyClicked -> buy(event.amount)
         }
     }
 
@@ -206,6 +213,26 @@ class CryptoMenuViewModel(
             bitcoinWallet.publicAddress.collect {
                 println("walletPublicAddress = $it")
                 syncWalletChart()
+            }
+        }
+    }
+
+    private fun buy(amount: String) {
+        viewModelScope.launch {
+
+            val apiKey = "VOTRE_API_KEY"
+            val apiSecret = "VOTRE_API_SECRET"
+
+            try {
+                val result = bitcoinWallet.publicAddress.value?.let {
+                    exchangeRepository.buyBitcoin(
+                        "eur", "30",
+                        it
+                    )
+                }
+                println("Envoyez les fonds à l'adresse : ${result?.payinAddress}")
+            } catch (e: Exception) {
+                println("Erreur : ${e.message}")
             }
         }
     }
