@@ -1,6 +1,7 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import com.android.build.api.dsl.ManagedVirtualDevice
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
@@ -13,6 +14,46 @@ plugins {
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.compose.compiler)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+val exchangeApiKey = localProperties.getProperty("EXCHANGE_API_KEY")
+
+kotlin {
+    sourceSets {
+        named("commonMain") {
+            kotlin.srcDir("build/generated/src/commonMain/kotlin")
+
+            // Génère un fichier Kotlin contenant la valeur
+            tasks.register("generateBuildConstants") {
+                doLast {
+                    val dir = file("build/generated/src/commonMain/kotlin/com/example")
+                    dir.mkdirs()
+                    file("${dir}/BuildConfig.kt").writeText(
+                        """
+                        package com.example
+
+                        object BuildConfig {
+                            const val EXCHANGE_API_KEY = "$exchangeApiKey"
+                        }
+                    """.trimIndent()
+                    )
+                }
+            }
+
+            // Ce fichier sera utilisé dans ton code Kotlin partagé
+            tasks.named("compileKotlinMetadata").configure {
+                dependsOn("generateBuildConstants")
+            }
+        }
+    }
+}
+
 
 kotlin {
     androidTarget {

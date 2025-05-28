@@ -16,6 +16,7 @@ interface PlatformBitcoinWallet {
     fun getTransactions(): List<Transaction>
     fun isSetup(): Boolean
     fun getPublicAddress(): String
+    fun getNewPublicAddress(): String
     fun getMnemonicPhrase(): List<String>?
     fun getCreationTime(): Long?
 }

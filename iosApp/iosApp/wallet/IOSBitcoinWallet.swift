@@ -28,6 +28,7 @@ class IOSBitcoinWallet :PlatformBitcoinWallet {
     // MARK: - State
     private var balanceSat: Int64 = 0
     private var creationTimestamp: Int64 = 0
+    private var address: String? = nil
     private var mnemonicWords: [String]?
     
     init() {
@@ -58,11 +59,15 @@ class IOSBitcoinWallet :PlatformBitcoinWallet {
     }
     
     func getPublicAddress() -> String {
+       return address ?? getNewPublicAddress()
+    }
+    
+    func getNewPublicAddress() -> String {
         let wallet = self.wallet
         let connection = self.connection
         let addressInfo = wallet?.revealNextAddress(keychain: KeychainKind.external)
-        let _ =  try? wallet!.persist(connection: self.connection!)
-        return (addressInfo?.address.description)!
+        let _ =  try? wallet?.persist(connection: self.connection!)
+        return (addressInfo?.address.description) ?? ""
     }
     
     

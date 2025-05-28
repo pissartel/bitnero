@@ -34,7 +34,12 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
 
         override fun load(mnemonicPhrase: List<String>, creationTime: Long): Boolean {
             val seed = DeterministicSeed(mnemonicPhrase, null, "", creationTime)
-            kit.restoreWalletFromSeed(seed) ?: return false
+            println("seed load = ${seed.mnemonicCode}")
+            kit = createAndSetupWalletKit().apply {
+                restoreWalletFromSeed(seed)
+                setBlockingStartup(false)
+                startAsync()
+            }
             return true
         }
 
@@ -44,9 +49,15 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
             password: String
         ): Boolean {
             val seed = DeterministicSeed(mnemonicPhrase, null, password, creationTime)
-            kit.restoreWalletFromSeed(seed) ?: return false
+            kit = createAndSetupWalletKit().apply {
+                restoreWalletFromSeed(seed)
+                setBlockingStartup(false)
+                setBlockingStartup(false)
+                startAsync()
+            }
             return true
         }
+
 
         override fun setOnSetupListener(listener: () -> Unit) {
             setupListener = listener
@@ -73,6 +84,10 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
         override fun isSetup(): Boolean = isSetup
 
         override fun getPublicAddress(): String {
+            return kit.wallet().currentReceiveAddress().toString()
+        }
+
+        override fun getNewPublicAddress(): String {
             return kit.wallet().freshReceiveAddress().toString()
         }
 

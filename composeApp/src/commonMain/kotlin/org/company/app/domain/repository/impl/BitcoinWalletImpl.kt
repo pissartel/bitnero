@@ -45,6 +45,7 @@ class BitcoinWalletImpl(private val platformBitcoinWallet: PlatformBitcoinWallet
             println("setup listener")
             setOnSetupListener {
                 println("setup listener ready !")
+                _publicAddress.tryEmit(platformBitcoinWallet.getPublicAddress())
                 _state.tryEmit(WalletState.READY)
             }
         }

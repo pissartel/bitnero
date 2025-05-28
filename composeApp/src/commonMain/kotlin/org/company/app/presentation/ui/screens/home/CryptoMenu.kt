@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,8 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,13 +39,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import bitnero.composeapp.generated.resources.Res
 import bitnero.composeapp.generated.resources.add
-import bitnero.composeapp.generated.resources.btc_icon
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -58,6 +56,7 @@ import org.company.app.presentation.ui.components.LoadingBox
 import org.company.app.presentation.ui.components.chart.MarketChartView
 import org.company.app.presentation.ui.components.MultipleModalBottomSheetLayout
 import org.company.app.presentation.ui.components.MultipleModalState
+import org.company.app.presentation.ui.components.action_menu.ActionMenu
 import org.company.app.presentation.ui.components.chart.WalletChartView
 import org.company.app.presentation.ui.components.chart.WalletEmpty
 import org.jetbrains.compose.resources.painterResource
@@ -76,8 +75,14 @@ fun CryptoMenu(
     var passphrase by remember {
         mutableStateOf<List<String>?>(emptyList())
     }
+    var publicAddress by remember {
+        mutableStateOf<String?>(null)
+    }
 
     val walletPassphraseModalBottomSheetState =
+        rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val actionMenuModalBottomSheetState =
         rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val modalBottomSheetStateWalletPassphrase =
@@ -95,10 +100,31 @@ fun CryptoMenu(
             }
         }
 
+    val modalBottomSheetActionMenu =
+        MultipleModalState(
+            actionMenuModalBottomSheetState
+        ) {
+            ActionMenu(
+                cryptoCurrency,
+                onBuyClick = {},
+                onSellClick = {},
+                onSendClick = {},
+                onReceiveClick = {},
+                onSwapClick = {},
+            ) {
+                scope.launch {
+                    actionMenuModalBottomSheetState.hide()
+                }
+            }
+        }
+
     MultipleModalBottomSheetLayout(
-        multipleModalStates = arrayOf(modalBottomSheetStateWalletPassphrase),
+        multipleModalStates = arrayOf(
+            modalBottomSheetStateWalletPassphrase,
+            modalBottomSheetActionMenu
+        ),
     ) {
-        Box {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .padding(16.dp)
@@ -163,7 +189,6 @@ fun CryptoMenu(
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
                         }
-
                     }
                 }
 
@@ -192,9 +217,12 @@ fun CryptoMenu(
             }
 
             CryptoFabButton(
+                cryptoCurrency = cryptoCurrency,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
-            ) {
+                    .zIndex(1f) // Assure que le FAB est au-dessus
 
+            ) {
+                viewModel.emitEvent(CryptoMenuEvent.OnActionMenuClicked)
             }
         }
 
@@ -205,6 +233,15 @@ fun CryptoMenu(
                         passphrase = effect.mnemonics
                         walletPassphraseModalBottomSheetState.show()
                     }
+
+                    is CryptoMenuEffect.OpenPurchaseActivity -> {
+                        publicAddress = effect.walletPublicAddress
+                        // todo
+                    }
+
+                    CryptoMenuEffect.ShowActionMenuSheet -> scope.launch {
+                        actionMenuModalBottomSheetState.show()
+                    }
                 }
             }.collect()
         }
@@ -214,8 +251,9 @@ fun CryptoMenu(
 
 @Composable
 fun CryptoFabButton(
+    cryptoCurrency: CryptoCurrency,
     modifier: Modifier = Modifier,
-    size: Dp = 82.dp,
+    size: Dp = 110.dp,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -247,9 +285,9 @@ fun CryptoFabButton(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            painter = painterResource(resource = Res.drawable.btc_icon), // todo  CryptoCurrency.BITCOIN.icon
+            painter = painterResource(resource = cryptoCurrency.icon),
             contentDescription = "Floating Button",
-            tint = CryptoCurrency.BITCOIN.color
+            tint = cryptoCurrency.color
         )
     }
 }

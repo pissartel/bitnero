@@ -57,6 +57,10 @@ class CryptoMenuViewModel(
     override fun handleEvent(event: CryptoMenuEvent) {
         when (event) {
             CryptoMenuEvent.OnCreateWalletClicked -> createWallet()
+            CryptoMenuEvent.OnActionMenuClicked -> sendEffect { CryptoMenuEffect.ShowActionMenuSheet }
+            CryptoMenuEvent.OnPurchaseClicked -> bitcoinWallet.publicAddress.value?.let {
+                sendEffect { CryptoMenuEffect.OpenPurchaseActivity(it) }
+            }
         }
     }
 
@@ -98,12 +102,17 @@ class CryptoMenuViewModel(
     private fun synchroniseWalletData() {
         viewModelScope.launch {
             bitcoinWallet.state.collect {
-                setState { copy(walletState = it) }
+                setState {
+                    copy(
+                        walletState = it,
+                    )
+                }
                 if (it == WalletState.READY) {
                     syncWalletChart()
                 }
             }
         }
+        collectWalletPublicAddress()
         collectWalletData()
     }
 
@@ -187,6 +196,15 @@ class CryptoMenuViewModel(
         viewModelScope.launch {
             bitcoinWallet.balance.collect {
                 setState { copy(walletBalance = it) }
+                syncWalletChart()
+            }
+        }
+    }
+
+    private fun collectWalletPublicAddress() {
+        viewModelScope.launch {
+            bitcoinWallet.publicAddress.collect {
+                println("walletPublicAddress = $it")
                 syncWalletChart()
             }
         }

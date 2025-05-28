@@ -11,6 +11,8 @@ import org.company.app.presentation.ui.base.UiState
 
 sealed interface CryptoMenuEvent : UiEvent {
     data object OnCreateWalletClicked : CryptoMenuEvent
+    data object OnActionMenuClicked : CryptoMenuEvent
+    data object OnPurchaseClicked : CryptoMenuEvent
 }
 
 data class CryptoMenuSate(
@@ -25,4 +27,6 @@ data class CryptoMenuSate(
 
 sealed interface CryptoMenuEffect : UiEffect {
     data class ShowCreatedWalletSheet(val mnemonics: List<String>) : CryptoMenuEffect
+    data object ShowActionMenuSheet : CryptoMenuEffect
+    data class OpenPurchaseActivity(val walletPublicAddress: String) : CryptoMenuEffect
 }
