@@ -1,8 +1,6 @@
 package org.company.app.platform
 
-import org.bitcoinj.base.Coin
 import org.bitcoinj.core.NetworkParameters
-import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.TransactionConfidence
 import org.bitcoinj.crypto.ECKey
 import org.bitcoinj.kits.WalletAppKit
@@ -15,20 +13,16 @@ import java.io.File
 actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet? =
     object : PlatformBitcoinWallet {
 
-        private val walletFolder = File(
-            APP_CONTEXT_INSTANCE.externalCacheDir, "wallet"
-        )
+        private val walletFolder = File(APP_CONTEXT_INSTANCE.externalCacheDir, "wallet")
         private val walletFileName = "bitcoin-wallet"
         private val networkParameters = NetworkParameters.fromID("org.bitcoin.production")
 
         private var kit: WalletAppKit? = null
-
         private var isSetup: Boolean = false
 
         private var setupListener: (() -> Unit)? = null
         private var balanceListener: ((Long) -> Unit)? = null
-        private var transactionsListener: ((org.company.app.domain.model.crypto.Transaction) -> Unit)? =
-            null
+        private var transactionsListener: ((org.company.app.domain.model.crypto.Transaction) -> Unit)? = null
 
         override fun create(): Boolean {
             kit = createAndSetupWalletKit().apply {
@@ -39,14 +33,7 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
         }
 
         override fun load(mnemonicPhrase: List<String>, creationTime: Long): Boolean {
-            val seed = DeterministicSeed(mnemonicPhrase, null, "", creationTime)
-            println("seed load = ${seed.mnemonicCode}")
-            kit = createAndSetupWalletKit().apply {
-                restoreWalletFromSeed(seed)
-                setBlockingStartup(false)
-                startAsync()
-            }
-            return true
+            return restoreWallet(DeterministicSeed(mnemonicPhrase, null, "", creationTime))
         }
 
         override fun load(
@@ -54,10 +41,12 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
             creationTime: Long,
             password: String
         ): Boolean {
-            val seed = DeterministicSeed(mnemonicPhrase, null, password, creationTime)
+            return restoreWallet(DeterministicSeed(mnemonicPhrase, null, password, creationTime))
+        }
+
+        private fun restoreWallet(seed: DeterministicSeed): Boolean {
             kit = createAndSetupWalletKit().apply {
                 restoreWalletFromSeed(seed)
-                setBlockingStartup(false)
                 setBlockingStartup(false)
                 startAsync()
             }
@@ -76,47 +65,37 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
             transactionsListener = listener
         }
 
-        override fun getBalance(): Long {
-            return kit?.wallet()?.balance?.toSat() ?: 0L
-        }
+        override fun getBalance(): Long =
+            kit?.wallet()?.balance?.toSat() ?: 0L
 
-        override fun getTransactions(): List<org.company.app.domain.model.crypto.Transaction> {
-            return kit?.wallet()?.getTransactions(true)?.map {
-                it.toTransaction()
-            } ?: emptyList()
-        }
+        override fun getTransactions(): List<org.company.app.domain.model.crypto.Transaction> =
+            kit?.wallet()?.getTransactions(true)?.map { it.toTransaction() } ?: emptyList()
 
         override fun isSetup(): Boolean = isSetup
 
-        override fun getPublicAddress(): String {
-            return kit?.wallet()?.currentReceiveAddress().toString()
-        }
+        override fun getPublicAddress(): String =
+            kit?.wallet()?.currentReceiveAddress()?.toString().orEmpty()
 
-        override fun getNewPublicAddress(): String {
-            return kit?.wallet()?.freshReceiveAddress().toString()
-        }
+        override fun getNewPublicAddress(): String =
+            kit?.wallet()?.freshReceiveAddress()?.toString().orEmpty()
 
-        override fun getMnemonicPhrase(): List<String>? {
-            val keyChainSeed = kit?.wallet()?.keyChainSeed
-            return keyChainSeed?.mnemonicCode?.toList()
-        }
+        override fun getMnemonicPhrase(): List<String>? =
+            kit?.wallet()?.keyChainSeed?.mnemonicCode?.toList()
 
-        override fun getCreationTime(): Long? {
-            val keyChainSeed = kit?.wallet()?.keyChainSeed
-            return keyChainSeed?.creationTimeSeconds
-        }
+        override fun getCreationTime(): Long? =
+            kit?.wallet()?.keyChainSeed?.creationTimeSeconds
 
         private fun createWalletFolderIfNecessary() {
-            if (!walletFolder.exists()) {
-                val success = walletFolder.mkdirs()
-            }
+            if (!walletFolder.exists()) walletFolder.mkdirs()
         }
 
         private fun createAndSetupWalletKit(): WalletAppKit {
             createWalletFolderIfNecessary()
             return object : WalletAppKit(networkParameters, walletFolder, walletFileName) {
                 override fun onSetupCompleted() {
-                    if (wallet().importedKeys.size < 1) wallet().importKey(ECKey())
+                    if (wallet().importedKeys.isEmpty()) {
+                        wallet().importKey(ECKey())
+                    }
                     wallet().setupWalletListeners()
                     isSetup = true
                     setupListener?.invoke()
@@ -125,40 +104,35 @@ actual fun createPlatformBitcoinWallet(network: Network): PlatformBitcoinWallet?
         }
 
         private fun Wallet.setupWalletListeners() {
-            this.addCoinsReceivedEventListener { wallet: Wallet?, tx: Transaction, prevBalance: Coin?, newBalance: Coin ->
-                println("newBalance = $newBalance")
+            addCoinsReceivedEventListener { _, _, _, newBalance ->
                 balanceListener?.invoke(newBalance.value)
             }
 
-            this.addCoinsSentEventListener { wallet: Wallet?, tx: Transaction, prevBalance: Coin, newBalance: Coin? ->
-                println("prevBalance = $prevBalance")
-                println("newBalance = $newBalance")
-                newBalance?.value?.let {
-                    balanceListener?.invoke(newBalance.value)
-                }
+            addCoinsSentEventListener { _, _, _, newBalance ->
+                newBalance?.value?.let { balanceListener?.invoke(it) }
             }
-            this.addTransactionConfidenceEventListener { wallet, tx ->
-                println("tx = $tx")
-                this.getTransactions(true).map {
-                    it.toTransaction()
+
+            addTransactionConfidenceEventListener { _, _ ->
+                getTransactions(true).forEach {
+                    transactionsListener?.invoke(it.toTransaction())
                 }
             }
         }
 
+        private fun org.bitcoinj.core.Transaction.toTransaction(): org.company.app.domain.model.crypto.Transaction {
+            val status = when (confidence.confidenceType) {
+                TransactionConfidence.ConfidenceType.BUILDING -> org.company.app.domain.model.crypto.Transaction.Status.DONE
+                TransactionConfidence.ConfidenceType.PENDING,
+                TransactionConfidence.ConfidenceType.IN_CONFLICT -> org.company.app.domain.model.crypto.Transaction.Status.PENDING
+                TransactionConfidence.ConfidenceType.DEAD -> org.company.app.domain.model.crypto.Transaction.Status.FAILED
+                else -> org.company.app.domain.model.crypto.Transaction.Status.UNKNOWN
+            }
 
-        private fun org.bitcoinj.core.Transaction.toTransaction(): org.company.app.domain.model.crypto.Transaction =
-            org.company.app.domain.model.crypto.Transaction(
-                time = this.lockTime,
+            return org.company.app.domain.model.crypto.Transaction(
+                time = this.updateTime?.time ?: this.lockTime,
                 type = org.company.app.domain.model.crypto.Transaction.Type.UNKNOWN,
-                status = when (confidence.confidenceType) {
-                    TransactionConfidence.ConfidenceType.BUILDING -> org.company.app.domain.model.crypto.Transaction.Status.DONE
-                    TransactionConfidence.ConfidenceType.IN_CONFLICT,
-                    TransactionConfidence.ConfidenceType.PENDING -> org.company.app.domain.model.crypto.Transaction.Status.PENDING
-
-                    TransactionConfidence.ConfidenceType.DEAD -> org.company.app.domain.model.crypto.Transaction.Status.FAILED
-                    null,
-                    TransactionConfidence.ConfidenceType.UNKNOWN -> org.company.app.domain.model.crypto.Transaction.Status.UNKNOWN
-                },
+                status = status,
                 amount = this.getValue(kit?.wallet()).toSat()
             )
+        }
     }

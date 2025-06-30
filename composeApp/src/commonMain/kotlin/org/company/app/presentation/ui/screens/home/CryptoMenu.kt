@@ -72,57 +72,39 @@ fun CryptoMenu(
     val effectFlow = viewModel.effects.receiveAsFlow()
     val scope = rememberCoroutineScope()
 
-    var passphrase by remember {
-        mutableStateOf<List<String>?>(emptyList())
-    }
-    var publicAddress by remember {
-        mutableStateOf<String?>(null)
-    }
+    var passphrase by remember { mutableStateOf<List<String>?>(null) }
+    var publicAddress by remember { mutableStateOf<String?>(null) }
 
-    val walletPassphraseModalBottomSheetState =
-        rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val walletSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val actionMenuSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val actionMenuModalBottomSheetState =
-        rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    val modalBottomSheetStateWalletPassphrase =
-        MultipleModalState(
-            walletPassphraseModalBottomSheetState
+    val walletModal = MultipleModalState(walletSheetState) {
+        WalletCreationPassphrase(
+            cryptoCurrency = cryptoCurrency,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp),
+            passphrase = passphrase
         ) {
-            WalletCreationPassphrase(
-                cryptoCurrency,
-                modifier = Modifier.fillMaxWidth().height(30.dp),
-                passphrase
-            ) {
-                scope.launch {
-                    walletPassphraseModalBottomSheetState.hide()
-                }
-            }
+            scope.launch { walletSheetState.hide() }
         }
+    }
 
-    val modalBottomSheetActionMenu =
-        MultipleModalState(
-            actionMenuModalBottomSheetState
+    val actionMenuModal = MultipleModalState(actionMenuSheetState) {
+        ActionMenu(
+            cryptoCurrency = cryptoCurrency,
+            onBuyClick = {},
+            onSellClick = {},
+            onSendClick = {},
+            onReceiveClick = {},
+            onSwapClick = {},
         ) {
-            ActionMenu(
-                cryptoCurrency,
-                onBuyClick = {},
-                onSellClick = {},
-                onSendClick = {},
-                onReceiveClick = {},
-                onSwapClick = {},
-            ) {
-                scope.launch {
-                    actionMenuModalBottomSheetState.hide()
-                }
-            }
+            scope.launch { actionMenuSheetState.hide() }
         }
+    }
 
     MultipleModalBottomSheetLayout(
-        multipleModalStates = arrayOf(
-            modalBottomSheetStateWalletPassphrase,
-            modalBottomSheetActionMenu
-        ),
+        multipleModalStates = arrayOf(walletModal, actionMenuModal)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -130,82 +112,33 @@ fun CryptoMenu(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
+                // Wallet Title
                 Text("Wallet", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(16.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(300.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(
-                            BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-                            RoundedCornerShape(16.dp)
-                        )
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    println("state.walletState = ${state.walletState}")
-                    when (state.walletState) {
-                        WalletState.UNKNOWN, WalletState.CREATING -> LoadingBox()
-                        WalletState.READY -> {
-                            println("state.walletState = ${state.walletState}")
-                            if (state.walletBalance != null
-                                && state.walletBalance?.toInt() != 0
-                                && state.marketPrice != null
-                            ) {
-                                println("if wallet chart view ")
-                                WalletChartView(
-                                    walletBalance = ChartBalance(
-                                        time = Clock.System.now().toEpochMilliseconds(),
-                                        marketValue = state.marketPrice!!,
-                                        balance = state.walletBalance!!,
-                                    ),
-                                    walletChartBalance = state.walletChartBalance,
-                                    fiatCurrency = state.fiatCurrency,
-                                    cryptoCurrency = cryptoCurrency
-                                )
-                            } else {
-                                println("if empty wallet")
-                                WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency)
-                            }
-                        }
 
-                        WalletState.NOT_CREATED -> Button(
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                backgroundColor = MaterialTheme.colorScheme.surface
-                            ),
-                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
-                            modifier = Modifier.size(50.dp),
-                            onClick = {
-                                viewModel.emitEvent(CryptoMenuEvent.OnCreateWalletClicked)
-                            }
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.add),
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
+                // Wallet View
+                WalletCard(
+                    state = state,
+                    cryptoCurrency = cryptoCurrency,
+                    onCreateWalletClicked = {
+                        viewModel.emitEvent(CryptoMenuEvent.OnCreateWalletClicked)
                     }
-                }
+                )
 
                 Spacer(modifier = Modifier.height(40.dp))
 
+                // Market Title
                 Text("Cours", style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Market Chart
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .height(300.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(MaterialTheme.colorScheme.surface)
-                        .border(
-                            BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-                            RoundedCornerShape(16.dp)
-                        )
+                        .border(2.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                         .padding(16.dp)
                 ) {
                     MarketChartView(
@@ -216,34 +149,99 @@ fun CryptoMenu(
                 }
             }
 
+            // Floating Button
             CryptoFabButton(
                 cryptoCurrency = cryptoCurrency,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
-                    .zIndex(1f) // Assure que le FAB est au-dessus
-
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+                    .zIndex(1f)
             ) {
                 viewModel.emitEvent(CryptoMenuEvent.OnActionMenuClicked)
             }
         }
 
-        LaunchedEffect(effectFlow, state) {
-            effectFlow.onEach { effect ->
+        // Handle Effects
+        LaunchedEffect(effectFlow) {
+            effectFlow.collect { effect ->
                 when (effect) {
                     is CryptoMenuEffect.ShowCreatedWalletSheet -> {
                         passphrase = effect.mnemonics
-                        walletPassphraseModalBottomSheetState.show()
+                        walletSheetState.show()
                     }
 
                     is CryptoMenuEffect.OpenPurchaseActivity -> {
                         publicAddress = effect.walletPublicAddress
-                        // todo
+                        // TODO: Open purchase screen
                     }
 
-                    CryptoMenuEffect.ShowActionMenuSheet -> scope.launch {
-                        actionMenuModalBottomSheetState.show()
+                    CryptoMenuEffect.ShowActionMenuSheet -> {
+                        actionMenuSheetState.show()
                     }
                 }
-            }.collect()
+            }
+        }
+    }
+}
+
+@Composable
+private fun WalletCard(
+    state: CryptoMenuSate,
+    cryptoCurrency: CryptoCurrency,
+    onCreateWalletClicked: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        when (state.walletState) {
+            WalletState.UNKNOWN, WalletState.CREATING -> {
+                LoadingBox()
+            }
+
+            WalletState.READY -> {
+                val balance = state.walletBalance
+                val marketPrice = state.marketPrice
+                if (balance != null && balance != 0L && marketPrice != null) {
+                    WalletChartView(
+                        walletBalance = ChartBalance(
+                            time = Clock.System.now().toEpochMilliseconds(),
+                            marketValue = marketPrice,
+                            balance = balance,
+                        ),
+                        walletChartBalance = state.walletChartBalance,
+                        fiatCurrency = state.fiatCurrency,
+                        cryptoCurrency = cryptoCurrency
+                    )
+                } else {
+                    WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency = cryptoCurrency)
+                }
+            }
+
+            WalletState.NOT_CREATED -> {
+                Button(
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
+                    modifier = Modifier.size(50.dp),
+                    onClick = onCreateWalletClicked
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.add),
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
         }
     }
 }

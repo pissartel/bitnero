@@ -38,21 +38,21 @@ class CryptoMenuViewModel(
             val walletData = walletDataRepository.decrypt()
             bitcoinWallet.load(walletData)
         }
-        synchroniseWalletData()
+        observeWalletState()
+        observeWalletData()
+        observeWalletAddress()
         fetchCryptoData()
     }
 
-    override fun createInitialState(): CryptoMenuSate {
-        return CryptoMenuSate(
-            walletState = WalletState.UNKNOWN,
-            walletBalance = null,
-            walletPrice = null,
-            marketPrice = null,
-            fiatCurrency = getLocalFiatCurrency(),
-            walletChartBalance = emptyMap(),
-            marketChartPrices = emptyMap()
-        )
-    }
+    override fun createInitialState(): CryptoMenuSate = CryptoMenuSate(
+        walletState = WalletState.UNKNOWN,
+        walletBalance = null,
+        walletPrice = null,
+        marketPrice = null,
+        fiatCurrency = getLocalFiatCurrency(),
+        walletChartBalance = emptyMap(),
+        marketChartPrices = emptyMap()
+    )
 
     override fun handleEvent(event: CryptoMenuEvent) {
         when (event) {
@@ -69,10 +69,9 @@ class CryptoMenuViewModel(
             bitcoinWallet.create()
                 .asResult()
                 .doOnFailure {
-                    println("error = $it")
+                    // logError("Wallet creation failed", it)
                 }
                 .doOnSuccess { walletData ->
-                    println("wallet create at ${walletData.creationTime}")
                     walletDataRepository.encrypt(walletData)
                     sendEffect { CryptoMenuEffect.ShowCreatedWalletSheet(walletData.mnemonicPhrase) }
                 }
@@ -85,114 +84,30 @@ class CryptoMenuViewModel(
             collectMarketData(currentState.fiatCurrency)
                 .asResult()
                 .doOnFailure {
-                    println("ERROR : $it")
+                    // logError("Failed to fetch crypto market data", it)
                 }
                 .doOnSuccess { data ->
-                    println("size date : ${data.size}")
                     setState {
                         copy(
-                            marketPrice = data.values.flatten().maxBy { it.time }.value,
+                            marketPrice = data.values.flatten().maxByOrNull { it.time }?.value,
                             marketChartPrices = data
                         )
                     }
-                }.collect()
+                }
+                .collect()
         }
     }
 
-    private fun synchroniseWalletData() {
+    private fun observeWalletState() {
         viewModelScope.launch {
-            bitcoinWallet.state.collect {
-                setState {
-                    copy(
-                        walletState = it,
-                    )
-                }
-                if (it == WalletState.READY) {
-                    syncWalletChart()
-                }
-            }
-        }
-        collectWalletPublicAddress()
-        collectWalletData()
-    }
-
-    private fun syncWalletChart() {
-        println("sync wallet chart")
-        if (currentState.walletState != WalletState.READY) return
-        if (currentState.walletBalance == null) return
-        val marketChartPrices = currentState.marketChartPrices
-        if (marketChartPrices.isEmpty()) return
-        println("launch")
-        viewModelScope.launch(Dispatchers.Default) {
-            transactionHistory.getHistory().collect { transactions ->
-
-                // merge app transactions history with wallet history
-                val mergedHistory =
-                    transactions + bitcoinWallet.transactionHistory.value.filter { walletTransaction -> transactions.find { it.time == walletTransaction.time } != null }
-
-                // init to actual value
-                var walletBalance = currentState.walletBalance ?: 0L
-
-                val historyChartBalance = mutableListOf<ChartBalance>()
-
-                mergedHistory
-                    .sortedByDescending { it.time }
-                    .forEach { history ->
-                        walletBalance -= history.amount
-                        val findClosestMarketPrice =
-                            marketChartPrices.values.flatten().findForClosestTime(history.time)
-                        findClosestMarketPrice?.let {
-                            historyChartBalance.add(
-                                ChartBalance(
-                                    history.time,
-                                    findClosestMarketPrice.value,
-                                    walletBalance,
-                                )
-                            )
-                        }
-                    }
-
-                val chartBalances = mutableListOf<Pair<Period, ChartBalance>>()
-                marketChartPrices.forEach { chartPrices ->
-                    chartPrices.value
-                        .sortedByDescending { it.time }
-                        .mapNotNull { marketChartPrice ->
-                            val closestChartBalance =
-                                historyChartBalance.findForClosestTime(marketChartPrice.time)
-                            closestChartBalance?.let {
-                                chartBalances.add(
-                                    chartPrices.key to
-                                            ChartBalance(
-                                                time = marketChartPrice.time,
-                                                marketValue = marketChartPrice.value,
-                                                balance = it.balance
-                                            )
-                                )
-                            }
-                        }
-                }
-
-                val now = Clock.System.now().toEpochMilliseconds()
-                historyChartBalance.forEach {
-                    Period.entries.forEach { period ->
-                        if (it.time < now - period.toTimeMillis()) {
-                            chartBalances.add(period to it)
-                        }
-                    }
-                }
-                setState {
-                    copy(
-                        walletChartBalance = chartBalances.groupBy(
-                            { it.first },
-                            { it.second })
-                    )
-                }
-                //println("walletChartBalance = ${currentState.walletChartBalance}")
+            bitcoinWallet.state.collect { state ->
+                setState { copy(walletState = state) }
+                if (state == WalletState.READY) syncWalletChart()
             }
         }
     }
 
-    private fun collectWalletData() {
+    private fun observeWalletData() {
         viewModelScope.launch {
             bitcoinWallet.balance.collect {
                 setState { copy(walletBalance = it) }
@@ -201,35 +116,79 @@ class CryptoMenuViewModel(
         }
     }
 
-    private fun collectWalletPublicAddress() {
+    private fun observeWalletAddress() {
         viewModelScope.launch {
             bitcoinWallet.publicAddress.collect {
-                println("walletPublicAddress = $it")
+                // logDebug("Wallet address: $it")
                 syncWalletChart()
             }
         }
     }
 
-    private suspend fun collectMarketData(localFiatCurrency: FiatCurrency): Flow<Map<Period, List<ChartPrice>>> {
-        val enums = Period.entries.map { period ->
-            cryptoDataRepository.getMarketChart(
-                id = cryptoCurrency.id,
-                fiatCurrency = localFiatCurrency,
-                days = period.days
-            ).map { markChartPrices ->
-                period to if (period == Period.ONE_HOUR) {
-                    val lastTime = markChartPrices.last().time
-                    val oneHourInMillis = 60 * 60 * 1000L
-                    markChartPrices.filter { it.time > lastTime - oneHourInMillis }
-                } else markChartPrices
+    private fun syncWalletChart() {
+        if (currentState.walletState != WalletState.READY) return
+        if (currentState.walletBalance == null) return
+        if (currentState.marketChartPrices.isEmpty()) return
+
+        viewModelScope.launch(Dispatchers.Default) {
+            transactionHistory.getHistory().collect { appTransactions ->
+                val walletTransactions = bitcoinWallet.transactionHistory.value
+                val mergedHistory = appTransactions + walletTransactions.filter { wt ->
+                    appTransactions.any { it.time == wt.time }
+                }
+
+                var balance = currentState.walletBalance ?: 0L
+                val historyChart = mutableListOf<ChartBalance>()
+
+                val marketPrices = currentState.marketChartPrices.values.flatten()
+
+                mergedHistory.sortedByDescending { it.time }.forEach { tx ->
+                    balance -= tx.amount
+                    marketPrices.findForClosestTime(tx.time)?.let { market ->
+                        historyChart.add(ChartBalance(tx.time, market.value, balance))
+                    }
+                }
+
+                val chartBalances = currentState.marketChartPrices.flatMap { (period, prices) ->
+                    prices.sortedByDescending { it.time }.mapNotNull { price ->
+                        historyChart.findForClosestTime(price.time)?.let {
+                            period to ChartBalance(price.time, price.value, it.balance)
+                        }
+                    }
+                }.toMutableList()
+
+                val now = Clock.System.now().toEpochMilliseconds()
+                Period.entries.forEach { period ->
+                    historyChart.filter { it.time < now - period.toTimeMillis() }
+                        .forEach { chartBalances.add(period to it) }
+                }
+
+                setState {
+                    copy(walletChartBalance = chartBalances.groupBy({ it.first }, { it.second }))
+                }
             }
-        }
-        return combine(enums) { arrayOfPairs ->
-            arrayOfPairs.associate { it }
         }
     }
 
-    private inline fun <T : ChartData> List<T>.findForClosestTime(value: Long): T? =
-        minByOrNull { kotlin.math.abs(it.time - value) }
+    private suspend fun collectMarketData(fiatCurrency: FiatCurrency): Flow<Map<Period, List<ChartPrice>>> {
+        val flows = Period.entries.map { period ->
+            cryptoDataRepository.getMarketChart(
+                id = cryptoCurrency.id,
+                fiatCurrency = fiatCurrency,
+                days = period.days
+            ).map { chartPrices ->
+                val filtered = if (period == Period.ONE_HOUR) {
+                    val oneHourAgo = chartPrices.lastOrNull()?.time?.minus(60 * 60 * 1000L)
+                    chartPrices.filter { it.time > (oneHourAgo ?: 0L) }
+                } else chartPrices
+                period to filtered
+            }
+        }
+
+        return combine(flows) { it.toMap() }
+    }
+
+    private inline fun <T : ChartData> List<T>.findForClosestTime(time: Long): T? =
+        minByOrNull { kotlin.math.abs(it.time - time) }
 }
 
