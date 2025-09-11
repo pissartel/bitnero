@@ -11,9 +11,16 @@ import io.ktor.client.request.headers
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import org.company.app.data.local.TransactionHistoryStorage
 import org.company.app.data.remote.CryptoMarketClient
 import org.company.app.domain.repository.CryptoMarketDataRepository
-import org.company.app.presentation.ui.screens.home.CryptoMenuItem
+import org.company.app.data.local.WalletDataEncryptionRepository
+import org.company.app.data.repository.TransactionHistory
+import org.company.app.platform.createPlatformBitcoinWallet
+import org.company.app.domain.model.crypto.CryptoCurrency
+import org.company.app.domain.model.wallet.Network
+import org.company.app.domain.repository.BitcoinWallet
+import org.company.app.domain.repository.impl.BitcoinWalletImpl
 import org.company.app.presentation.ui.screens.home.CryptoMenuViewModel
 import org.company.app.utils.Constant
 import org.koin.dsl.module
@@ -33,7 +40,7 @@ val appModule = module {
                 level = LogLevel.ALL
                 logger = object : Logger {
                     override fun log(message: String) {
-                        println(message)
+                        // println(message)
                     }
                 }
                 filter { filter -> filter.url.host.contains("api.coingecko.com") }
@@ -55,5 +62,20 @@ val appModule = module {
     single {
         CryptoMarketDataRepository(get())
     }
-    single { CryptoMenuViewModel(CryptoMenuItem.BITCOIN, get()) }
+    single { createPlatformBitcoinWallet(Network.TESTNET) }
+    single<BitcoinWallet> { BitcoinWalletImpl(get()) }
+    //single { createEncryptedToolbox() }
+    single<TransactionHistory> {
+        TransactionHistoryStorage()
+    }
+    single { WalletDataEncryptionRepository() }
+    single {
+        CryptoMenuViewModel(
+            CryptoCurrency.BITCOIN,
+            get(),
+            get(),
+            get(),
+            get()
+        )
+    }
 }

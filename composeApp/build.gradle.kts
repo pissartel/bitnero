@@ -1,6 +1,7 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import com.android.build.api.dsl.ManagedVirtualDevice
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
@@ -13,6 +14,46 @@ plugins {
     alias(libs.plugins.sqlDelight)
     alias(libs.plugins.compose.compiler)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+val exchangeApiKey = localProperties.getProperty("EXCHANGE_API_KEY")
+
+kotlin {
+    sourceSets {
+        named("commonMain") {
+            kotlin.srcDir("build/generated/src/commonMain/kotlin")
+
+            // Génère un fichier Kotlin contenant la valeur
+            tasks.register("generateBuildConstants") {
+                doLast {
+                    val dir = file("build/generated/src/commonMain/kotlin/com/example")
+                    dir.mkdirs()
+                    file("${dir}/BuildConfig.kt").writeText(
+                        """
+                        package com.example
+
+                        object BuildConfig {
+                            const val EXCHANGE_API_KEY = "$exchangeApiKey"
+                        }
+                    """.trimIndent()
+                    )
+                }
+            }
+
+            // Ce fichier sera utilisé dans ton code Kotlin partagé
+            tasks.named("compileKotlinMetadata").configure {
+                dependsOn("generateBuildConstants")
+            }
+        }
+    }
+}
+
 
 kotlin {
     androidTarget {
@@ -58,6 +99,9 @@ kotlin {
             }
         }
         commonMain.dependencies {
+            // bitcoin for Android and JVM
+            implementation(libs.bitcoinj)
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -89,6 +133,8 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.mp)
             implementation(libs.coil.network.ktor)
+            implementation(libs.settings)
+            implementation(libs.settings.coroutines)
         }
 
         commonTest.dependencies {
@@ -99,6 +145,12 @@ kotlin {
         }
 
         androidMain.dependencies {
+            // lightning
+            implementation(libs.bitcoin.lightning.kmp)
+
+            // encrypted shared pref
+            implementation(libs.androidx.security.crypto)
+
             implementation(compose.uiTooling)
             implementation(libs.androidx.activityCompose)
             implementation(libs.kotlinx.coroutines.android)
@@ -115,6 +167,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqlDelight.driver.sqlite)
+
         }
 
         jsMain.dependencies {
@@ -128,6 +181,15 @@ kotlin {
             implementation(libs.sqlDelight.driver.native)
         }
 
+        nativeMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+            implementation(libs.sqlDelight.driver.native)
+        }
+        getByName("commonMain") {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+            }
+        }
     }
 }
 
@@ -202,7 +264,7 @@ sqldelight {
         }
     }
 }
-task("testClasses"){}
+task("testClasses") {}
 dependencies {
     implementation(libs.androidx.core.i18n)
 }

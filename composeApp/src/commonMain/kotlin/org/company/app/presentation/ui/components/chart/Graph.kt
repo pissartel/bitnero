@@ -33,7 +33,7 @@ import org.company.app.platform.getPlatform
 import kotlin.math.abs
 
 @Composable
-fun InteractiveGraph(
+internal fun InteractiveGraph(
     modifier: Modifier = Modifier,
     timeData: List<Long>,
     yData: List<Double>,

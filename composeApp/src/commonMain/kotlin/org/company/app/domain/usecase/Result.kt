@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.transform
 sealed interface Result<out T> {
     data class Success<T>(val data: T) : Result<T>
     data class Failure(val exception: Throwable) : Result<Nothing>
-    object Loading : Result<Nothing>
+    data object Loading : Result<Nothing>
 }
 
 fun <T> Flow<T>.asResult(): Flow<Result<T>> {

@@ -1,0 +1,291 @@
+package org.company.app.presentation.ui.screens.home
+
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import bitnero.composeapp.generated.resources.Res
+import bitnero.composeapp.generated.resources.add
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import org.company.app.domain.model.crypto.ChartBalance
+import org.company.app.domain.model.crypto.CryptoCurrency
+import org.company.app.presentation.ui.components.LoadingBox
+import org.company.app.presentation.ui.components.chart.MarketChartView
+import org.company.app.presentation.ui.components.MultipleModalBottomSheetLayout
+import org.company.app.presentation.ui.components.MultipleModalState
+import org.company.app.presentation.ui.components.action_menu.ActionMenu
+import org.company.app.presentation.ui.components.chart.WalletChartView
+import org.company.app.presentation.ui.components.chart.WalletEmpty
+import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CryptoMenu(
+    cryptoCurrency: CryptoCurrency,
+    viewModel: CryptoMenuViewModel = koinInject(),
+) {
+    val state by viewModel.state.collectAsState()
+    val effectFlow = viewModel.effects.receiveAsFlow()
+    val scope = rememberCoroutineScope()
+
+    var passphrase by remember { mutableStateOf<List<String>?>(null) }
+    var publicAddress by remember { mutableStateOf<String?>(null) }
+
+    val walletSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val actionMenuSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val walletModal = MultipleModalState(walletSheetState) {
+        WalletCreationPassphrase(
+            cryptoCurrency = cryptoCurrency,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp),
+            passphrase = passphrase
+        ) {
+            scope.launch { walletSheetState.hide() }
+        }
+    }
+
+    val actionMenuModal = MultipleModalState(actionMenuSheetState) {
+        ActionMenu(
+            cryptoCurrency = cryptoCurrency,
+            onBuyClick = {},
+            onSellClick = {},
+            onSendClick = {},
+            onReceiveClick = {},
+            onSwapClick = {},
+        ) {
+            scope.launch { actionMenuSheetState.hide() }
+        }
+    }
+
+    MultipleModalBottomSheetLayout(
+        multipleModalStates = arrayOf(walletModal, actionMenuModal)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Wallet Title
+                Text("Wallet", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Wallet View
+                WalletCard(
+                    state = state,
+                    cryptoCurrency = cryptoCurrency,
+                    onCreateWalletClicked = {
+                        viewModel.emitEvent(CryptoMenuEvent.OnCreateWalletClicked)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Market Title
+                Text("Cours", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Market Chart
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(2.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    MarketChartView(
+                        marketPrice = state.marketPrice,
+                        chartPrices = state.marketChartPrices,
+                        fiatCurrency = state.fiatCurrency
+                    )
+                }
+            }
+
+            // Floating Button
+            CryptoFabButton(
+                cryptoCurrency = cryptoCurrency,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+                    .zIndex(1f)
+            ) {
+                viewModel.emitEvent(CryptoMenuEvent.OnActionMenuClicked)
+            }
+        }
+
+        // Handle Effects
+        LaunchedEffect(effectFlow) {
+            effectFlow.collect { effect ->
+                when (effect) {
+                    is CryptoMenuEffect.ShowCreatedWalletSheet -> {
+                        passphrase = effect.mnemonics
+                        walletSheetState.show()
+                    }
+
+                    is CryptoMenuEffect.OpenPurchaseActivity -> {
+                        publicAddress = effect.walletPublicAddress
+                        // TODO: Open purchase screen
+                    }
+
+                    CryptoMenuEffect.ShowActionMenuSheet -> {
+                        actionMenuSheetState.show()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WalletCard(
+    state: CryptoMenuSate,
+    cryptoCurrency: CryptoCurrency,
+    onCreateWalletClicked: () -> Unit
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        when (state.walletState) {
+            WalletState.UNKNOWN, WalletState.CREATING -> {
+                LoadingBox()
+            }
+
+            WalletState.READY -> {
+                val balance = state.walletBalance
+                val marketPrice = state.marketPrice
+                if (balance != null && balance != 0L && marketPrice != null) {
+                    WalletChartView(
+                        walletBalance = ChartBalance(
+                            time = Clock.System.now().toEpochMilliseconds(),
+                            marketValue = marketPrice,
+                            balance = balance,
+                        ),
+                        walletChartBalance = state.walletChartBalance,
+                        fiatCurrency = state.fiatCurrency,
+                        cryptoCurrency = cryptoCurrency
+                    )
+                } else {
+                    WalletEmpty(fiatCurrency = state.fiatCurrency, cryptoCurrency = cryptoCurrency)
+                }
+            }
+
+            WalletState.NOT_CREATED -> {
+                Button(
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = MaterialTheme.colorScheme.surface
+                    ),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
+                    modifier = Modifier.size(50.dp),
+                    onClick = onCreateWalletClicked
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.add),
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun CryptoFabButton(
+    cryptoCurrency: CryptoCurrency,
+    modifier: Modifier = Modifier,
+    size: Dp = 110.dp,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        label = "scale"
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 8.dp,
+        label = "elevation"
+    )
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .scale(scale) // effet d'enfoncement
+            //.shadow(elevation, CircleShape, clip = false) // ombre animée
+            .clip(CircleShape) // bouton rond
+            .background(Color.Transparent)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null // supprime le ripple
+            ) {
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(resource = cryptoCurrency.icon),
+            contentDescription = "Floating Button",
+            tint = cryptoCurrency.color
+        )
+    }
+}

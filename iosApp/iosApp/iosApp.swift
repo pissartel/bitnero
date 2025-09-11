@@ -9,7 +9,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        window = UIWindow(frame: UIScreen.main.bounds)
+        let nativeResponseFactory = IOSBitcoinWalletFactoryImpl()
+        
+        ComposeApp.Bitcoin_nativeKt.setNativeResponseFactory(factory: nativeResponseFactory)
+
+          window = UIWindow(frame: UIScreen.main.bounds)
         if let window = window {
             window.rootViewController = MainKt.MainViewController()
             window.makeKeyAndVisible()
